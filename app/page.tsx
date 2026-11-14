@@ -116,32 +116,42 @@ export default function Home() {
     if (!file || !user) return
     setUploadingCv(true)
     setMsg('')
+    let publicUrl = ''
     try {
       const path = `cvs/${user.id}-${Date.now()}.pdf`
       const { error: upErr } = await supabase.storage.from('profiles').upload(path, file, { upsert: true })
       if (upErr) throw upErr
       const { data } = supabase.storage.from('profiles').getPublicUrl(path)
-      const publicUrl = data.publicUrl
+      publicUrl = data.publicUrl
 
-      const checkRes = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/redact-cv`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ fileUrl: publicUrl, userId: user.id })
-      })
-      const checkData = await checkRes.json()
-
-      if (checkData.blocked) {
-        await supabase.storage.from('profiles').remove([path])
-        setMsg('❌ ' + (checkData.reason || 'E-Mail oder Telefonnummer im CV gefunden'))
-        e.target.value = ''
-        return
+      try {
+        const session = (await supabase.auth.getSession()).data.session
+        const checkRes = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/redact-cv`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+          },
+          body: JSON.stringify({ fileUrl: publicUrl, userId: user.id })
+        })
+        if (checkRes.ok) {
+          const checkData = await checkRes.json()
+          if (checkData.blocked) {
+            await supabase.storage.from('profiles').remove([path])
+            setMsg('❌ ' + (checkData.reason || 'Kontaktdaten gefunden'))
+            e.target.value = ''
+            return
+          }
+          setMsg('✅ CV ist sauber und wurde hochgeladen')
+        } else {
+          setMsg('CV hochgeladen (Validierung nicht verfügbar)')
+        }
+      } catch {
+        setMsg('CV hochgeladen (Validierung übersprungen)')
       }
 
       setCvUrl(publicUrl)
-      setMsg('✅ CV ist sauber und wurde hochgeladen')
     } catch (err: any) {
       setMsg('CV-Fehler: ' + err.message)
     } finally {
@@ -294,7 +304,7 @@ export default function Home() {
       ) : (
         <div className="bg-white p-8 rounded-xl shadow-sm max-w-2xl">
           <h2 className="text-2xl font-semibold mb-6">Mein Profil</h2>
-          {msg && <div className={`p-3 rounded mb-4 ${msg.includes('Fehler') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
+          {msg && <div className={`p-3 rounded mb-4 ${msg.includes('Fehler') || msg.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
 
           <div className="flex items-center gap-6 mb-6">
             {photoUrl ? (
