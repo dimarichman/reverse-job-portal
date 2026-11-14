@@ -15,6 +15,7 @@ export default function Home() {
   const [profile, setProfile] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
+  const [view, setView] = useState<'overview' | 'profile'>('overview')
 
   const [fullName, setFullName] = useState('')
   const [title, setTitle] = useState('')
@@ -203,7 +204,7 @@ export default function Home() {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <header className="flex justify-between items-center mb-8">
+      <header className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-blue-600">Job Heroes</h1>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-600">{user.email} · {isRecruiter ? 'Recruiter' : 'Kandidat'}</span>
@@ -211,7 +212,24 @@ export default function Home() {
         </div>
       </header>
 
-      {isRecruiter ? (
+      <nav className="flex gap-2 mb-6">
+        <button
+          onClick={() => setView('overview')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium ${view === 'overview' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          Übersicht
+        </button>
+        {!isRecruiter && (
+          <button
+            onClick={() => setView('profile')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${view === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+          >
+            Mein Profil
+          </button>
+        )}
+      </nav>
+
+      {view === 'overview' || isRecruiter ? (
         <>
           <h2 className="text-2xl font-semibold mb-6">Kandidaten-Übersicht</h2>
           <div className="space-y-4">
