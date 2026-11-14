@@ -30,7 +30,9 @@ export default function Home() {
   const [skills, setSkills] = useState('')
   const [industries, setIndustries] = useState('')
   const [photoUrl, setPhotoUrl] = useState('')
+  const [cvUrl, setCvUrl] = useState('')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [uploadingCv, setUploadingCv] = useState(false)
 
   useEffect(() => {
     const check = async () => {
@@ -85,6 +87,7 @@ export default function Home() {
       setSkills((data.skills || []).join(', '))
       setIndustries((data.industries || []).join(', '))
       setPhotoUrl(data.photo_url || '')
+      setCvUrl(data.cv_url || '')
     }
   }
 
@@ -108,6 +111,25 @@ export default function Home() {
     }
   }
 
+  async function uploadCv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    setUploadingCv(true)
+    setMsg('')
+    try {
+      const path = `cvs/${user.id}-${Date.now()}.pdf`
+      const { error: upErr } = await supabase.storage.from('profiles').upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data } = supabase.storage.from('profiles').getPublicUrl(path)
+      setCvUrl(data.publicUrl)
+      setMsg('CV hochgeladen')
+    } catch (err: any) {
+      setMsg('CV-Fehler: ' + err.message)
+    } finally {
+      setUploadingCv(false)
+    }
+  }
+
   async function saveProfile() {
     if (!user) return
     setSaving(true)
@@ -127,6 +149,7 @@ export default function Home() {
       skills: skills.split(',').map(s => s.trim()).filter(Boolean),
       industries: industries.split(',').map(s => s.trim()).filter(Boolean),
       photo_url: photoUrl || null,
+      cv_url: cvUrl || null,
     }
     try {
       if (profile) {
@@ -242,6 +265,7 @@ export default function Home() {
                   {c.experience_years != null && <p className="text-sm text-gray-500">{c.experience_years} Jahre Berufserfahrung</p>}
                   {c.salary_desired_k && <p className="text-sm">Gehalt: {c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>}
                   {c.bio && <p className="mt-2 text-gray-700">{c.bio}</p>}
+                  {c.cv_url && <p className="mt-2"><a href={c.cv_url} target="_blank" className="text-blue-600 text-sm underline">Lebenslauf (PDF)</a></p>}
                 </div>
               </div>
             ))}
@@ -264,6 +288,13 @@ export default function Home() {
               <input type="file" accept="image/*" onChange={uploadPhoto} disabled={uploadingPhoto} className="text-sm" />
               {uploadingPhoto && <p className="text-xs text-gray-500 mt-1">Lade hoch...</p>}
             </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-1">Lebenslauf (PDF)</label>
+            <input type="file" accept="application/pdf" onChange={uploadCv} disabled={uploadingCv} className="text-sm" />
+            {uploadingCv && <p className="text-xs text-gray-500 mt-1">Lade CV hoch...</p>}
+            {cvUrl && <p className="text-sm mt-2"><a href={cvUrl} target="_blank" className="text-blue-600 underline">Aktueller CV ansehen</a></p>}
           </div>
 
           <div className="space-y-4">
