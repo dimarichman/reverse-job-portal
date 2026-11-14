@@ -12,15 +12,35 @@ export default function Home() {
   const [candidates, setCandidates] = useState<any[]>([])
   const [error, setError] = useState('')
   const [isLogin, setIsLogin] = useState(true)
+  const [profile, setProfile] = useState<any>(null)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  const [fullName, setFullName] = useState('')
+  const [title, setTitle] = useState('')
+  const [location, setLocation] = useState('')
+  const [experience, setExperience] = useState('')
+  const [availableFrom, setAvailableFrom] = useState('')
+  const [salary, setSalary] = useState('')
+  const [negotiable, setNegotiable] = useState(true)
+  const [currentCompany, setCurrentCompany] = useState('')
+  const [employed, setEmployed] = useState(false)
+  const [bio, setBio] = useState('')
+  const [skills, setSkills] = useState('')
+  const [industries, setIndustries] = useState('')
 
   useEffect(() => {
     const check = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession()
-        if (error) throw error
+        const { data } = await supabase.auth.getSession()
         setUser(data.session?.user ?? null)
-        if (data.session) await loadCandidates()
-      } catch (e: any) {
+        if (data.session) {
+          await loadCandidates()
+          if ((data.session.user.user_metadata?.role || 'candidate') === 'candidate') {
+            await loadProfile(data.session.user.id)
+          }
+        }
+      } catch (e) {
         console.error(e)
       } finally {
         setLoading(false)
@@ -28,17 +48,74 @@ export default function Home() {
     }
     check()
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (_e, session) => {
       setUser(session?.user ?? null)
-      if (session) await loadCandidates()
+      if (session) {
+        await loadCandidates()
+        if ((session.user.user_metadata?.role || 'candidate') === 'candidate') {
+          await loadProfile(session.user.id)
+        }
+      }
     })
-
     return () => listener.subscription.unsubscribe()
   }, [])
 
   async function loadCandidates() {
     const { data } = await supabase.from('candidates').select('*').order('created_at', { ascending: false }).limit(30)
     setCandidates(data || [])
+  }
+
+  async function loadProfile(userId: string) {
+    const { data } = await supabase.from('candidates').select('*').eq('user_id', userId).single()
+    if (data) {
+      setProfile(data)
+      setFullName(data.full_name || '')
+      setTitle(data.title || '')
+      setLocation(data.location || '')
+      setExperience(data.experience_years?.toString() || '')
+      setAvailableFrom(data.available_from || '')
+      setSalary(data.salary_desired_k?.toString() || '')
+      setNegotiable(data.salary_negotiable !== false)
+      setCurrentCompany(data.current_company || '')
+      setEmployed(!!data.currently_employed)
+      setBio(data.bio || '')
+      setSkills((data.skills || []).join(', '))
+      setIndustries((data.industries || []).join(', '))
+    }
+  }
+
+  async function saveProfile() {
+    if (!user) return
+    setSaving(true)
+    setMsg('')
+    const payload = {
+      user_id: user.id,
+      full_name: fullName,
+      title: title || null,
+      location: location || null,
+      experience_years: experience ? parseInt(experience) : null,
+      available_from: availableFrom || null,
+      salary_desired_k: salary ? parseInt(salary) : null,
+      salary_negotiable: negotiable,
+      current_company: currentCompany || null,
+      currently_employed: employed,
+      bio: bio || null,
+      skills: skills.split(',').map(s => s.trim()).filter(Boolean),
+      industries: industries.split(',').map(s => s.trim()).filter(Boolean),
+    }
+    try {
+      if (profile) {
+        await supabase.from('candidates').update(payload).eq('id', profile.id)
+      } else {
+        const { data } = await supabase.from('candidates').insert(payload).select().single()
+        setProfile(data)
+      }
+      setMsg('Profil gespeichert!')
+    } catch (e: any) {
+      setMsg('Fehler: ' + e.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleAuth(e: React.FormEvent) {
@@ -67,6 +144,7 @@ export default function Home() {
     await supabase.auth.signOut()
     setUser(null)
     setCandidates([])
+    setProfile(null)
   }
 
   if (loading) return <div className="p-8 text-center text-gray-500">Lade...</div>
@@ -118,14 +196,76 @@ export default function Home() {
                 <h3 className="text-xl font-semibold">{c.full_name || 'Unbekannt'}</h3>
                 <p className="text-gray-600">{c.title || ''} · {c.location || ''}</p>
                 {c.experience_years != null && <p className="text-sm text-gray-500">{c.experience_years} Jahre Berufserfahrung</p>}
+                {c.salary_desired_k && <p className="text-sm">Gehalt: {c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>}
+                {c.bio && <p className="mt-2 text-gray-700">{c.bio}</p>}
               </div>
             ))}
+            {candidates.length === 0 && <p className="text-gray-500">Keine Kandidaten.</p>}
           </div>
         </>
       ) : (
-        <div className="bg-white p-8 rounded-xl shadow-sm">
-          <h2 className="text-2xl font-semibold mb-4">Mein Profil</h2>
-          <p className="text-gray-600">Profil-Editor kommt als Nächstes.</p>
+        <div className="bg-white p-8 rounded-xl shadow-sm max-w-2xl">
+          <h2 className="text-2xl font-semibold mb-6">Mein Profil</h2>
+          {msg && <div className={`p-3 rounded mb-4 ${msg.includes('Fehler') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Vollständiger Name</label>
+              <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-3 border rounded-lg" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Gesuchter Job</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="z.B. Senior Frontend Entwickler" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Ort</label>
+              <input value={location} onChange={e => setLocation(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="Hamburg, Remote..." />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Jahre Berufserfahrung</label>
+                <input type="number" value={experience} onChange={e => setExperience(e.target.value)} className="w-full p-3 border rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Verfügbar ab</label>
+                <input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} className="w-full p-3 border rounded-lg" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Wunschgehalt (in 1.000 €)</label>
+                <input type="number" value={salary} onChange={e => setSalary(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="75" />
+              </div>
+              <div className="flex items-end">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={negotiable} onChange={e => setNegotiable(e.target.checked)} />
+                  <span className="text-sm">verhandelbar</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Aktueller Arbeitgeber</label>
+              <input value={currentCompany} onChange={e => setCurrentCompany(e.target.value)} className="w-full p-3 border rounded-lg" />
+            </div>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={employed} onChange={e => setEmployed(e.target.checked)} />
+              <span className="text-sm">Ich bin aktuell noch im Job</span>
+            </label>
+            <div>
+              <label className="block text-sm font-medium mb-1">Bio</label>
+              <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-3 border rounded-lg" rows={3} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Skills (kommagetrennt)</label>
+              <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="React, TypeScript, Sales..." />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Branchen (kommagetrennt)</label>
+              <input value={industries} onChange={e => setIndustries(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="IT, SaaS, Hospitality..." />
+            </div>
+            <button onClick={saveProfile} disabled={saving} className="bg-green-600 text-white px-6 py-3 rounded-lg font-medium disabled:opacity-50">
+              {saving ? 'Speichere...' : 'Profil speichern'}
+            </button>
+          </div>
         </div>
       )}
     </div>
