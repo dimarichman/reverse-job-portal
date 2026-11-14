@@ -121,8 +121,27 @@ export default function Home() {
       const { error: upErr } = await supabase.storage.from('profiles').upload(path, file, { upsert: true })
       if (upErr) throw upErr
       const { data } = supabase.storage.from('profiles').getPublicUrl(path)
-      setCvUrl(data.publicUrl)
-      setMsg('CV hochgeladen')
+      const publicUrl = data.publicUrl
+
+      const checkRes = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/redact-cv`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fileUrl: publicUrl, userId: user.id })
+      })
+      const checkData = await checkRes.json()
+
+      if (checkData.blocked) {
+        await supabase.storage.from('profiles').remove([path])
+        setMsg('❌ ' + (checkData.reason || 'E-Mail oder Telefonnummer im CV gefunden'))
+        e.target.value = ''
+        return
+      }
+
+      setCvUrl(publicUrl)
+      setMsg('✅ CV ist sauber und wurde hochgeladen')
     } catch (err: any) {
       setMsg('CV-Fehler: ' + err.message)
     } finally {
