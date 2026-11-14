@@ -260,21 +260,21 @@ export default function Home() {
         <h1 className="text-3xl font-bold text-blue-600">Job Heroes</h1>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-600">{user.email} · {isRecruiter ? 'Recruiter' : 'Kandidat'}</span>
-          <button onClick={signOut} className="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm">Abmelden</button>
+          <button onClick={signOut} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">Abmelden</button>
         </div>
       </header>
 
-      <nav className="flex gap-2 mb-6">
+      <nav className="flex gap-2 mb-8">
         <button
           onClick={() => setView('overview')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium ${view === 'overview' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+          className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'overview' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
         >
           Übersicht
         </button>
         {!isRecruiter && (
           <button
             onClick={() => setView('profile')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${view === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+            className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
             Mein Profil
           </button>
@@ -283,52 +283,66 @@ export default function Home() {
 
       {view === 'overview' || isRecruiter ? (
         <>
-          <h2 className="text-2xl font-semibold mb-6">Kandidaten-Übersicht</h2>
+          <h2 className="text-2xl font-semibold mb-6 text-gray-900">Kandidaten</h2>
           <div className="space-y-4">
             {candidates.map(c => (
-              <div key={c.id} className="bg-white p-6 rounded-xl shadow-sm border flex gap-4">
-                {c.photo_url && <img src={c.photo_url} alt="" className="w-16 h-16 rounded-lg object-cover" />}
-                <div>
-                  <h3 className="text-xl font-semibold">{c.full_name || 'Unbekannt'}</h3>
-                  <p className="text-gray-600">{c.title || ''} · {c.location || ''}</p>
-                  {c.experience_years != null && <p className="text-sm text-gray-500">{c.experience_years} Jahre Berufserfahrung</p>}
-                  {c.salary_desired_k && <p className="text-sm">Gehalt: {c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>}
-                  {c.bio && <p className="mt-2 text-gray-700">{c.bio}</p>}
-                  {c.cv_url && <p className="mt-2"><a href={c.cv_url} target="_blank" className="text-blue-600 text-sm underline">Lebenslauf (PDF)</a></p>}
+              <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                <div className="p-6 flex gap-5">
+                  {c.photo_url ? (
+                    <img src={c.photo_url} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm flex-shrink-0">Foto</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-xl font-semibold text-gray-900">{c.full_name || 'Unbekannt'}</h3>
+                    <p className="text-gray-600 mt-0.5">{c.title || 'Kein Titel'} · {c.location || 'Kein Ort'}</p>
+                    {c.experience_years != null && (
+                      <p className="text-sm text-gray-500 mt-1">{c.experience_years} Jahre Berufserfahrung</p>
+                    )}
+                    {c.salary_desired_k && (
+                      <p className="text-sm font-medium text-gray-800 mt-1">{c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>
+                    )}
+                    {c.bio && <p className="mt-3 text-gray-700 text-sm leading-relaxed line-clamp-2">{c.bio}</p>}
+                    {c.cv_url && (
+                      <a href={c.cv_url} target="_blank" className="inline-flex items-center mt-3 text-blue-600 text-sm font-medium hover:underline">
+                        Lebenslauf (PDF) →
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
-            {candidates.length === 0 && <p className="text-gray-500">Keine Kandidaten.</p>}
+            {candidates.length === 0 && <p className="text-gray-500">Keine Kandidaten gefunden.</p>}
           </div>
         </>
       ) : (
-        <div className="bg-white p-8 rounded-xl shadow-sm max-w-2xl">
-          <h2 className="text-2xl font-semibold mb-6">Mein Profil</h2>
-          {msg && <div className={`p-3 rounded mb-4 ${msg.includes('Fehler') || msg.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-2xl">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-900">Mein Profil</h2>
+          {msg && <div className={`p-3 rounded-lg mb-6 text-sm ${msg.includes('Fehler') || msg.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
 
-          <div className="flex items-center gap-6 mb-6">
+          <div className="flex items-center gap-6 mb-8">
             {photoUrl ? (
-              <img src={photoUrl} alt="Profil" className="w-24 h-24 rounded-full object-cover border" />
+              <img src={photoUrl} alt="Profil" className="w-28 h-28 rounded-2xl object-cover border border-gray-200" />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">Foto</div>
+              <div className="w-28 h-28 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400">Foto</div>
             )}
             <div>
-              <label className="block text-sm font-medium mb-1">Profilbild</label>
-              <input type="file" accept="image/*" onChange={uploadPhoto} disabled={uploadingPhoto} className="text-sm" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Profilbild</label>
+              <input type="file" accept="image/*" onChange={uploadPhoto} disabled={uploadingPhoto} className="text-sm text-gray-600" />
               {uploadingPhoto && <p className="text-xs text-gray-500 mt-1">Lade hoch...</p>}
             </div>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-1">Lebenslauf (PDF)</label>
-            <input type="file" accept="application/pdf" onChange={uploadCv} disabled={uploadingCv} className="text-sm" />
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Lebenslauf (PDF)</label>
+            <input type="file" accept="application/pdf" onChange={uploadCv} disabled={uploadingCv} className="text-sm text-gray-600" />
             {uploadingCv && <p className="text-xs text-gray-500 mt-1">Lade CV hoch...</p>}
             {cvUrl && (
-              <div className="mt-2 flex items-center gap-3">
+              <div className="mt-2 flex items-center gap-4">
                 <a href={cvUrl} target="_blank" className="text-blue-600 underline text-sm">Aktueller CV ansehen</a>
                 <button
                   type="button"
-                  onClick={async () => {
+                  onClick={() => {
                     if (!confirm('CV wirklich löschen?')) return
                     setCvUrl('')
                     setMsg('CV entfernt (bitte Profil speichern)')
@@ -341,62 +355,62 @@ export default function Home() {
             )}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium mb-1">Vollständiger Name</label>
-              <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-3 border rounded-lg" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Vollständiger Name</label>
+              <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Gesuchter Job</label>
-              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="z.B. Senior Frontend Entwickler" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Gesuchter Job</label>
+              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="z.B. Senior Frontend Entwickler" />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Ort</label>
-              <input value={location} onChange={e => setLocation(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="Hamburg, Remote..." />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
+              <input value={location} onChange={e => setLocation(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="Hamburg, Remote..." />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Jahre Berufserfahrung</label>
-                <input type="number" value={experience} onChange={e => setExperience(e.target.value)} className="w-full p-3 border rounded-lg" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jahre Berufserfahrung</label>
+                <input type="number" value={experience} onChange={e => setExperience(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Verfügbar ab</label>
-                <input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} className="w-full p-3 border rounded-lg" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Verfügbar ab</label>
+                <input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Wunschgehalt (in 1.000 €)</label>
-                <input type="number" value={salary} onChange={e => setSalary(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="75" />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Wunschgehalt (in 1.000 €)</label>
+                <input type="number" value={salary} onChange={e => setSalary(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="75" />
               </div>
-              <div className="flex items-end">
+              <div className="flex items-end pb-2">
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={negotiable} onChange={e => setNegotiable(e.target.checked)} />
-                  <span className="text-sm">verhandelbar</span>
+                  <input type="checkbox" checked={negotiable} onChange={e => setNegotiable(e.target.checked)} className="rounded" />
+                  <span className="text-sm text-gray-700">verhandelbar</span>
                 </label>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Aktueller Arbeitgeber</label>
-              <input value={currentCompany} onChange={e => setCurrentCompany(e.target.value)} className="w-full p-3 border rounded-lg" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Aktueller Arbeitgeber</label>
+              <input value={currentCompany} onChange={e => setCurrentCompany(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
             </div>
             <label className="flex items-center gap-2">
-              <input type="checkbox" checked={employed} onChange={e => setEmployed(e.target.checked)} />
-              <span className="text-sm">Ich bin aktuell noch im Job</span>
+              <input type="checkbox" checked={employed} onChange={e => setEmployed(e.target.checked)} className="rounded" />
+              <span className="text-sm text-gray-700">Ich bin aktuell noch im Job</span>
             </label>
             <div>
-              <label className="block text-sm font-medium mb-1">Bio</label>
-              <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-3 border rounded-lg" rows={3} />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+              <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" rows={3} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Skills (kommagetrennt)</label>
-              <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="React, TypeScript, Sales..." />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Skills (kommagetrennt)</label>
+              <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="React, TypeScript, Sales..." />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Branchen (kommagetrennt)</label>
-              <input value={industries} onChange={e => setIndustries(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="IT, SaaS, Hospitality..." />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Branchen (kommagetrennt)</label>
+              <input value={industries} onChange={e => setIndustries(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="IT, SaaS, Hospitality..." />
             </div>
-            <button onClick={saveProfile} disabled={saving} className="bg-green-600 text-white px-6 py-3 rounded-lg font-medium disabled:opacity-50">
+            <button onClick={saveProfile} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 transition">
               {saving ? 'Speichere...' : 'Profil speichern'}
             </button>
           </div>
