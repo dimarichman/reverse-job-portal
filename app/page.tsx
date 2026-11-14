@@ -28,6 +28,8 @@ export default function Home() {
   const [bio, setBio] = useState('')
   const [skills, setSkills] = useState('')
   const [industries, setIndustries] = useState('')
+  const [photoUrl, setPhotoUrl] = useState('')
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   useEffect(() => {
     const check = async () => {
@@ -81,6 +83,27 @@ export default function Home() {
       setBio(data.bio || '')
       setSkills((data.skills || []).join(', '))
       setIndustries((data.industries || []).join(', '))
+      setPhotoUrl(data.photo_url || '')
+    }
+  }
+
+  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    setUploadingPhoto(true)
+    setMsg('')
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `photos/${user.id}-${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('profiles').upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data } = supabase.storage.from('profiles').getPublicUrl(path)
+      setPhotoUrl(data.publicUrl)
+      setMsg('Foto hochgeladen')
+    } catch (err: any) {
+      setMsg('Foto-Fehler: ' + err.message)
+    } finally {
+      setUploadingPhoto(false)
     }
   }
 
@@ -102,6 +125,7 @@ export default function Home() {
       bio: bio || null,
       skills: skills.split(',').map(s => s.trim()).filter(Boolean),
       industries: industries.split(',').map(s => s.trim()).filter(Boolean),
+      photo_url: photoUrl || null,
     }
     try {
       if (profile) {
@@ -192,12 +216,15 @@ export default function Home() {
           <h2 className="text-2xl font-semibold mb-6">Kandidaten-Übersicht</h2>
           <div className="space-y-4">
             {candidates.map(c => (
-              <div key={c.id} className="bg-white p-6 rounded-xl shadow-sm border">
-                <h3 className="text-xl font-semibold">{c.full_name || 'Unbekannt'}</h3>
-                <p className="text-gray-600">{c.title || ''} · {c.location || ''}</p>
-                {c.experience_years != null && <p className="text-sm text-gray-500">{c.experience_years} Jahre Berufserfahrung</p>}
-                {c.salary_desired_k && <p className="text-sm">Gehalt: {c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>}
-                {c.bio && <p className="mt-2 text-gray-700">{c.bio}</p>}
+              <div key={c.id} className="bg-white p-6 rounded-xl shadow-sm border flex gap-4">
+                {c.photo_url && <img src={c.photo_url} alt="" className="w-16 h-16 rounded-lg object-cover" />}
+                <div>
+                  <h3 className="text-xl font-semibold">{c.full_name || 'Unbekannt'}</h3>
+                  <p className="text-gray-600">{c.title || ''} · {c.location || ''}</p>
+                  {c.experience_years != null && <p className="text-sm text-gray-500">{c.experience_years} Jahre Berufserfahrung</p>}
+                  {c.salary_desired_k && <p className="text-sm">Gehalt: {c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>}
+                  {c.bio && <p className="mt-2 text-gray-700">{c.bio}</p>}
+                </div>
               </div>
             ))}
             {candidates.length === 0 && <p className="text-gray-500">Keine Kandidaten.</p>}
@@ -207,6 +234,20 @@ export default function Home() {
         <div className="bg-white p-8 rounded-xl shadow-sm max-w-2xl">
           <h2 className="text-2xl font-semibold mb-6">Mein Profil</h2>
           {msg && <div className={`p-3 rounded mb-4 ${msg.includes('Fehler') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
+
+          <div className="flex items-center gap-6 mb-6">
+            {photoUrl ? (
+              <img src={photoUrl} alt="Profil" className="w-24 h-24 rounded-full object-cover border" />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">Foto</div>
+            )}
+            <div>
+              <label className="block text-sm font-medium mb-1">Profilbild</label>
+              <input type="file" accept="image/*" onChange={uploadPhoto} disabled={uploadingPhoto} className="text-sm" />
+              {uploadingPhoto && <p className="text-xs text-gray-500 mt-1">Lade hoch...</p>}
+            </div>
+          </div>
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Vollständiger Name</label>
