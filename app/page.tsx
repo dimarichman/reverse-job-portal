@@ -323,7 +323,22 @@ export default function Home() {
             <label className="block text-sm font-medium mb-1">Lebenslauf (PDF)</label>
             <input type="file" accept="application/pdf" onChange={uploadCv} disabled={uploadingCv} className="text-sm" />
             {uploadingCv && <p className="text-xs text-gray-500 mt-1">Lade CV hoch...</p>}
-            {cvUrl && <p className="text-sm mt-2"><a href={cvUrl} target="_blank" className="text-blue-600 underline">Aktueller CV ansehen</a></p>}
+            {cvUrl && (
+              <div className="mt-2 flex items-center gap-3">
+                <a href={cvUrl} target="_blank" className="text-blue-600 underline text-sm">Aktueller CV ansehen</a>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!confirm('CV wirklich löschen?')) return
+                    setCvUrl('')
+                    setMsg('CV entfernt (bitte Profil speichern)')
+                  }}
+                  className="text-red-600 text-sm underline"
+                >
+                  Löschen
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
