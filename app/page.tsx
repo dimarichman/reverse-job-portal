@@ -48,6 +48,7 @@ export default function Home() {
   const [needsProfile, setNeedsProfile] = useState(false)
   const [onboardingStep, setOnboardingStep] = useState(0)
   const [isActive, setIsActive] = useState(true)
+  const [showInactive, setShowInactive] = useState(false)
 
   const [filterExp, setFilterExp] = useState('')
   const [filterSalary, setFilterSalary] = useState('')
@@ -625,7 +626,7 @@ export default function Home() {
   }
 
   const filtered = candidates.filter(c => {
-    if (c.is_active === false && !isAdmin) return false
+    if (c.is_active === false && !(isAdmin && showInactive)) return false
     if (filterExp && (c.experience_years || 0) < parseInt(filterExp)) return false
     if (filterSalary && (c.salary_desired_k || 999) > parseInt(filterSalary)) return false
     if (filterLocation && !c.location?.toLowerCase().includes(filterLocation.toLowerCase())) return false
@@ -923,6 +924,20 @@ export default function Home() {
                 <input placeholder="Max. Gehalt (k€)" value={filterSalary} onChange={e => setFilterSalary(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                 <input placeholder="Ort" value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
+              {isAdmin && (
+                <div className="mt-4 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="showInactive"
+                    checked={showInactive}
+                    onChange={e => setShowInactive(e.target.checked)}
+                    className="rounded"
+                  />
+                  <label htmlFor="showInactive" className="text-sm text-slate-700 cursor-pointer">
+                    Inaktive Profile anzeigen
+                  </label>
+                </div>
+              )}
             </div>
 
             <h2 className="text-xl sm:text-2xl font-semibold mb-5 sm:mb-6 tracking-tight">Kandidaten ({filtered.length})</h2>
@@ -954,6 +969,7 @@ export default function Home() {
                           <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
                             {isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}
                             {c.is_certified && <span className="text-emerald-600 text-sm" title="Zertifiziert">✓</span>}
+                            {c.is_active === false && <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">Inaktiv</span>}
                           </h3>
                           <p className="text-slate-700 font-medium mt-0.5">{c.title || 'Kein Titel'}</p>
                         </div>
