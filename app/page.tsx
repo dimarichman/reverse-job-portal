@@ -303,12 +303,18 @@ export default function Home() {
   }
 
   async function togglePremium(recruiterId: string, current: boolean) {
-    await supabase.from('recruiter_profiles').update({ is_premium: !current }).eq('id', recruiterId)
+    const { error } = await supabase.from('recruiter_profiles').update({ is_premium: !current }).eq('id', recruiterId)
+    if (error) {
+      alert('Fehler beim Setzen von Premium: ' + error.message)
+    }
     await loadAdminRecruiters()
   }
 
   async function toggleCertified(candidateId: string, current: boolean) {
-    await supabase.from('candidates').update({ is_certified: !current }).eq('id', candidateId)
+    const { error } = await supabase.from('candidates').update({ is_certified: !current }).eq('id', candidateId)
+    if (error) {
+      alert('Fehler beim Zertifizieren: ' + error.message)
+    }
     await loadCandidates()
   }
 
@@ -402,6 +408,26 @@ export default function Home() {
 
   async function requestContact(candidateId: string) {
     if (!user) return
+
+    // Check if already requested this candidate
+    const { data: existing } = await supabase
+      .from('contact_requests')
+      .select('id, status')
+      .eq('recruiter_id', user.id)
+      .eq('candidate_id', candidateId)
+      .maybeSingle()
+
+    if (existing) {
+      alert('Du hast diesen Kandidaten bereits angefragt. Mehrfachanfragen sind nicht erlaubt.')
+      return
+    }
+
+    if (!companyName.trim()) {
+      alert('Bitte lege zuerst dein Firmenprofil an (Firmenname), bevor du anfragst.')
+      setView('profile')
+      return
+    }
+
     await logView(candidateId)
     const message = window.prompt('Kurze Nachricht (optional):') || ''
     const { error } = await supabase.from('contact_requests').insert({
@@ -416,10 +442,9 @@ export default function Home() {
     } else {
       alert('Anfrage gesendet.')
       const { data: cand } = await supabase.from('candidates').select('full_name').eq('id', candidateId).maybeSingle()
-      const { data: rp } = await supabase.from('recruiter_profiles').select('company_name').eq('user_id', user.id).maybeSingle()
       await notifyAdmin(
         'Neue Kontaktanfrage',
-        `${rp?.company_name || user.email} hat ${cand?.full_name || 'einen Kandidaten'} angefragt.`
+        `${companyName || user.email} hat ${cand?.full_name || 'einen Kandidaten'} angefragt.`
       )
       await loadMyRequests(user.id)
     }
@@ -789,12 +814,14 @@ export default function Home() {
                     )}
                     {r.recruiter_phone && <p className="text-xs text-slate-500 mt-2">Telefon: {r.recruiter_phone}</p>}
                     <p className="text-xs text-slate-400 mt-2">{new Date(r.created_at).toLocaleString()}</p>
-                    {r.status === 'pending' && (
-                      <div className="mt-4 flex gap-2 justify-end">
+                    <div className="mt-4 flex gap-2 justify-end">
+                      {r.status !== 'approved' && (
                         <button onClick={() => updateRequestStatus(r.id, 'approved')} className="bg-green-600 text-white text-sm px-4 py-2 rounded-xl font-medium">Freigeben</button>
+                      )}
+                      {r.status !== 'rejected' && (
                         <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="bg-red-600 text-white text-sm px-4 py-2 rounded-xl font-medium">Ablehnen</button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
                 {adminRequests.length === 0 && <p className="text-slate-500">Keine Anfragen.</p>}
