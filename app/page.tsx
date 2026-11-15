@@ -631,9 +631,9 @@ export default function Home() {
               {filtered.map(c => {
                 const isHidden = c.currently_employed && !isPremium
                 return (
-                  <div key={c.id} className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 relative" onMouseEnter={() => logView(c.id)}>
+                  <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-all relative" onMouseEnter={() => logView(c.id)}>
                     {isHidden && (
-                      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl sm:rounded-3xl">
+                      <div className="absolute inset-0 bg-white/85 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
                         <div className="text-center px-6">
                           <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
                             <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
@@ -644,91 +644,101 @@ export default function Home() {
                       </div>
                     )}
                     <div className={`p-5 sm:p-6 ${isHidden ? 'filter blur-[2px]' : ''}`}>
-                      <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
+                      {/* Header: Photo + Name + Salary */}
+                      <div className="flex gap-4 items-start">
                         {c.photo_url ? (
-                          <img src={c.photo_url} alt="" className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover flex-shrink-0 ring-2 ring-slate-100" />
+                          <img src={c.photo_url} alt="" className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover flex-shrink-0 ring-1 ring-slate-200" />
                         ) : (
-                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400 text-sm flex-shrink-0">Foto</div>
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-xs flex-shrink-0">Foto</div>
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">{isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}</h3>
-                              <p className="text-slate-600 mt-0.5 font-medium text-sm sm:text-base">{c.title || 'Kein Titel'}</p>
+                              <h3 className="text-lg font-semibold text-slate-900">{isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}</h3>
+                              <p className="text-slate-600 text-sm mt-0.5">{c.title || 'Kein Titel'}</p>
                             </div>
                             {c.salary_desired_k && (
                               <div className="text-right flex-shrink-0">
-                                <p className="text-xs text-slate-500 uppercase tracking-wide">Wunschgehalt</p>
-                                <p className="text-lg sm:text-xl font-semibold text-slate-900">{c.salary_desired_k}k €</p>
+                                <p className="text-xs uppercase tracking-wide text-slate-400">Wunschgehalt</p>
+                                <p className="text-lg font-semibold text-slate-900">{c.salary_desired_k}k €</p>
                                 {c.salary_negotiable && <p className="text-xs text-slate-500">verhandelbar</p>}
                               </div>
                             )}
                           </div>
+                        </div>
+                      </div>
 
-                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                            {c.location && (
-                              <div>
-                                <span className="text-slate-400 text-xs">Ort</span>
-                                <p className="text-slate-700">{c.location}</p>
-                              </div>
-                            )}
-                            {c.experience_years != null && (
-                              <div>
-                                <span className="text-slate-400 text-xs">Berufserfahrung</span>
-                                <p className="text-slate-700">{c.experience_years} Jahre</p>
-                              </div>
-                            )}
-                            {c.available_from && (
-                              <div>
-                                <span className="text-slate-400 text-xs">Verfügbar ab</span>
-                                <p className="text-slate-700">{new Date(c.available_from).toLocaleDateString('de-DE')}</p>
-                              </div>
-                            )}
+                      {/* Key facts grid */}
+                      <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {c.location && (
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-slate-400">Ort</p>
+                            <p className="text-sm font-medium text-slate-800 mt-0.5">{isHidden ? '••••' : c.location}</p>
                           </div>
+                        )}
+                        {c.experience_years != null && (
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-slate-400">Berufserfahrung</p>
+                            <p className="text-sm font-medium text-slate-800 mt-0.5">{c.experience_years} Jahre</p>
+                          </div>
+                        )}
+                        {c.available_from && (
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-slate-400">Verfügbar ab</p>
+                            <p className="text-sm font-medium text-slate-800 mt-0.5">{new Date(c.available_from).toLocaleDateString('de-DE')}</p>
+                          </div>
+                        )}
+                      </div>
 
-                          {c.bio && <p className="mt-4 text-slate-600 text-sm leading-relaxed line-clamp-2">{isHidden ? '••••••••••••••••••••' : c.bio}</p>}
+                      {/* Bio */}
+                      {c.bio && (
+                        <div className="mt-5">
+                          <p className="text-xs uppercase tracking-wide text-slate-400 mb-1">Über mich</p>
+                          <p className="text-sm text-slate-700 leading-relaxed">{isHidden ? '••••••••••••••••••••' : c.bio}</p>
+                        </div>
+                      )}
 
-                          {(c.skills?.length > 0 || c.industries?.length > 0) && (
-                            <div className="mt-4">
-                              {c.skills?.length > 0 && (
-                                <div className="mb-2">
-                                  <span className="text-slate-400 text-xs">Skills</span>
-                                  <div className="flex flex-wrap gap-1.5 mt-1">
-                                    {c.skills.slice(0, 5).map((s: string) => (
-                                      <span key={s} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">{s}</span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {c.industries?.length > 0 && (
-                                <div>
-                                  <span className="text-slate-400 text-xs">Branchen</span>
-                                  <div className="flex flex-wrap gap-1.5 mt-1">
-                                    {c.industries.slice(0, 4).map((i: string) => (
-                                      <span key={i} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium">{i}</span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                      {/* Skills & Industries */}
+                      {(c.skills?.length > 0 || c.industries?.length > 0) && (
+                        <div className="mt-5 space-y-3">
+                          {c.skills?.length > 0 && (
+                            <div>
+                              <p className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">Skills</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {c.skills.slice(0, 5).map((s: string) => (
+                                  <span key={s} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">{s}</span>
+                                ))}
+                              </div>
                             </div>
                           )}
-
-                          <div className="mt-5 flex items-center gap-3 pt-4 border-t border-slate-100">
-                            {c.cv_url && !isHidden && (
-                              <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
-                                Lebenslauf →
-                              </a>
-                            )}
-                            {isRecruiter && !isHidden && (
-                              <button
-                                onClick={() => requestContact(c.id)}
-                                className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 sm:px-5 py-2.5 rounded-xl font-medium transition shadow-sm"
-                              >
-                                Anfragen
-                              </button>
-                            )}
-                          </div>
+                          {c.industries?.length > 0 && (
+                            <div>
+                              <p className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">Branchen</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {c.industries.slice(0, 4).map((i: string) => (
+                                  <span key={i} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium">{i}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
+                      )}
+
+                      {/* Footer */}
+                      <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-3">
+                        {c.cv_url && !isHidden && (
+                          <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
+                            Lebenslauf →
+                          </a>
+                        )}
+                        {isRecruiter && !isHidden && (
+                          <button
+                            onClick={() => requestContact(c.id)}
+                            className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm px-5 py-2.5 rounded-xl font-medium transition"
+                          >
+                            Anfragen
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
