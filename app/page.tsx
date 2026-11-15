@@ -409,30 +409,32 @@ export default function Home() {
     return true
   })
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Lade...</div>
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500">Lade...</div>
 
   if (!user) {
     return (
-      <div className="max-w-md mx-auto mt-16 p-8 bg-white rounded-2xl shadow-lg">
-        <h1 className="text-3xl font-bold text-blue-600 mb-2 text-center">Job Heroes</h1>
-        <p className="text-center text-gray-500 mb-6">Firmen suchen dich – nicht umgekehrt</p>
-        {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm">{error}</div>}
-        <form onSubmit={handleAuth} className="space-y-4">
-          <input type="email" placeholder="E-Mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" required />
-          <input type="password" placeholder="Passwort" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" required />
-          {!isLogin && (
-            <select value={role} onChange={e => setRole(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg">
-              <option value="candidate">Ich bin Kandidat</option>
-              <option value="recruiter">Ich bin Arbeitgeber / Recruiter</option>
-            </select>
-          )}
-          <button type="submit" className="w-full bg-blue-600 text-white p-3 rounded-lg font-medium">
-            {isLogin ? 'Anmelden' : 'Registrieren'}
+      <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-b from-slate-50 to-white">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-10">
+          <h1 className="text-4xl font-bold text-blue-600 mb-1 text-center tracking-tight">Job Heroes</h1>
+          <p className="text-center text-slate-500 mb-8">Firmen suchen dich – nicht umgekehrt</p>
+          {error && <div className="bg-red-50 text-red-700 p-3 rounded-xl mb-6 text-sm">{error}</div>}
+          <form onSubmit={handleAuth} className="space-y-4">
+            <input type="email" placeholder="E-Mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" required />
+            <input type="password" placeholder="Passwort" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" required />
+            {!isLogin && (
+              <select value={role} onChange={e => setRole(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none">
+                <option value="candidate">Ich bin Kandidat</option>
+                <option value="recruiter">Ich bin Arbeitgeber / Recruiter</option>
+              </select>
+            )}
+            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-xl font-medium transition">
+              {isLogin ? 'Anmelden' : 'Registrieren'}
+            </button>
+          </form>
+          <button onClick={() => setIsLogin(!isLogin)} className="w-full mt-6 text-sm text-slate-500 hover:text-slate-700">
+            {isLogin ? 'Noch kein Konto? Registrieren' : 'Schon ein Konto? Anmelden'}
           </button>
-        </form>
-        <button onClick={() => setIsLogin(!isLogin)} className="w-full mt-4 text-sm text-gray-500">
-          {isLogin ? 'Noch kein Konto? Registrieren' : 'Schon ein Konto? Anmelden'}
-        </button>
+        </div>
       </div>
     )
   }
@@ -440,344 +442,344 @@ export default function Home() {
   const isRecruiter = (user.user_metadata?.role || 'candidate') === 'recruiter'
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <header className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-blue-600">Job Heroes</h1>
-        <div className="flex items-center gap-4">
-          <button onClick={() => { setView('notifications'); markAllRead() }} className="relative p-2 text-gray-600 hover:text-gray-900">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{unreadCount}</span>
-            )}
-          </button>
-          <span className="text-sm text-gray-600">{user.email} · {isRecruiter ? 'Recruiter' : 'Kandidat'}{isAdmin ? ' · Admin' : ''}</span>
-          <button onClick={signOut} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">Abmelden</button>
-        </div>
-      </header>
-
-      <nav className="flex gap-2 mb-8 flex-wrap">
-        <button onClick={() => setView('overview')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'overview' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Übersicht</button>
-        <button onClick={() => setView('profile')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{isRecruiter ? 'Firmenprofil' : 'Mein Profil'}</button>
-        {!isRecruiter && (
-          <button onClick={() => setView('requests')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Anfragen</button>
-        )}
-        {isRecruiter && (
-          <button onClick={() => setView('requests')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Meine Anfragen</button>
-        )}
-        {isAdmin && (
-          <button onClick={() => setView('admin')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'admin' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Admin</button>
-        )}
-      </nav>
-
-      {view === 'notifications' && (
-        <div>
-          <h2 className="text-2xl font-semibold mb-6">Benachrichtigungen</h2>
-          <div className="space-y-3">
-            {notifications.map(n => (
-              <div key={n.id} className={`p-4 rounded-xl border ${n.read ? 'bg-white' : 'bg-blue-50'}`}>
-                <p className="font-medium">{n.title}</p>
-                <p className="text-sm text-gray-600 mt-1">{n.message}</p>
-                <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
-              </div>
-            ))}
-            {notifications.length === 0 && <p className="text-gray-500">Keine Benachrichtigungen.</p>}
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-5xl mx-auto px-6 py-8">
+        <header className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-blue-600 tracking-tight">Job Heroes</h1>
+          <div className="flex items-center gap-5">
+            <button onClick={() => { setView('notifications'); markAllRead() }} className="relative p-2 text-slate-600 hover:text-slate-900 transition">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">{unreadCount}</span>
+              )}
+            </button>
+            <span className="text-sm text-slate-600 hidden sm:inline">{user.email} · {isRecruiter ? 'Recruiter' : 'Kandidat'}{isAdmin ? ' · Admin' : ''}</span>
+            <button onClick={signOut} className="bg-slate-200 hover:bg-slate-300 text-slate-800 px-4 py-2 rounded-xl text-sm font-medium transition">Abmelden</button>
           </div>
-        </div>
-      )}
+        </header>
 
-      {view === 'admin' && isAdmin && (
-        <div className="space-y-8">
+        <nav className="flex gap-2 mb-8 flex-wrap">
+          <button onClick={() => setView('overview')} className={`px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'overview' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Übersicht</button>
+          <button onClick={() => setView('profile')} className={`px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'profile' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>{isRecruiter ? 'Firmenprofil' : 'Mein Profil'}</button>
+          {!isRecruiter && (
+            <button onClick={() => setView('requests')} className={`px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Anfragen</button>
+          )}
+          {isRecruiter && (
+            <button onClick={() => setView('requests')} className={`px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Meine Anfragen</button>
+          )}
+          {isAdmin && (
+            <button onClick={() => setView('admin')} className={`px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'admin' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Admin</button>
+          )}
+        </nav>
+
+        {view === 'notifications' && (
           <div>
-            <h2 className="text-2xl font-semibold mb-4">Kontaktanfragen</h2>
-            <div className="space-y-4">
-              {adminRequests.map(r => (
-                <div key={r.id} className="bg-white p-5 rounded-2xl border shadow-sm">
-                  <div>
+            <h2 className="text-2xl font-semibold mb-6 tracking-tight">Benachrichtigungen</h2>
+            <div className="space-y-3">
+              {notifications.map(n => (
+                <div key={n.id} className={`p-5 rounded-2xl border ${n.read ? 'bg-white border-slate-100' : 'bg-blue-50 border-blue-100'}`}>
+                  <p className="font-medium">{n.title}</p>
+                  <p className="text-sm text-slate-600 mt-1">{n.message}</p>
+                  <p className="text-xs text-slate-400 mt-2">{new Date(n.created_at).toLocaleString()}</p>
+                </div>
+              ))}
+              {notifications.length === 0 && <p className="text-slate-500">Keine Benachrichtigungen.</p>}
+            </div>
+          </div>
+        )}
+
+        {view === 'admin' && isAdmin && (
+          <div className="space-y-10">
+            <div>
+              <h2 className="text-2xl font-semibold mb-5 tracking-tight">Kontaktanfragen</h2>
+              <div className="space-y-4">
+                {adminRequests.map(r => (
+                  <div key={r.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="flex justify-between items-start">
                       <p className="font-semibold">Anfrage {r.id.slice(0, 8)}</p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{r.status}</span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{r.status}</span>
                     </div>
-                    <p className="mt-2 text-sm text-gray-700">{r.message || '(keine Nachricht)'}</p>
-                    <p className="text-xs text-gray-400 mt-2">{new Date(r.created_at).toLocaleString()}</p>
-                  </div>
-                  {r.status === 'pending' && (
-                    <div className="mt-4 flex gap-2 justify-end">
-                      <button onClick={() => updateRequestStatus(r.id, 'approved')} className="bg-green-600 text-white text-sm px-4 py-1.5 rounded-lg">Freigeben</button>
-                      <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="bg-red-600 text-white text-sm px-4 py-1.5 rounded-lg">Ablehnen</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-              {adminRequests.length === 0 && <p className="text-gray-500">Keine Anfragen.</p>}
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">Profil-Ansichten</h2>
-            <div className="space-y-2">
-              {adminViews.map(v => (
-                <div key={v.id} className="bg-white p-3 rounded-lg border text-sm flex justify-between">
-                  <span>Ansicht {v.id.slice(0, 8)}</span>
-                  <span className="text-gray-400">{new Date(v.viewed_at).toLocaleString()}</span>
-                </div>
-              ))}
-              {adminViews.length === 0 && <p className="text-gray-500">Noch keine Ansichten.</p>}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {view === 'requests' && !isRecruiter && (
-        <div>
-          <h2 className="text-2xl font-semibold mb-6">Anfragen an dich</h2>
-          <div className="space-y-4">
-            {candidateRequests.map(r => (
-              <div key={r.id} className="bg-white p-5 rounded-2xl border shadow-sm">
-                <div className="flex gap-3">
-                  {r.logo_url && <img src={r.logo_url} alt="" className="w-10 h-10 rounded object-cover" />}
-                  <div>
-                    <p className="font-semibold text-lg">{r.company_name || 'Unbekannte Firma'}</p>
-                    <p className="mt-2 text-sm text-gray-700">{r.message || '(keine Nachricht)'}</p>
-                    <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600 font-medium' : r.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}>{r.status}</span></p>
-                    <p className="text-xs text-gray-400 mt-1">{new Date(r.created_at).toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {candidateRequests.length === 0 && <p className="text-gray-500">Noch keine Anfragen an dich.</p>}
-          </div>
-        </div>
-      )}
-
-      {view === 'requests' && isRecruiter && (
-        <div>
-          <h2 className="text-2xl font-semibold mb-6">Meine Anfragen</h2>
-          <div className="space-y-3">
-            {requests.map(r => (
-              <div key={r.id} className="bg-white p-4 rounded-xl border">
-                <p className="font-medium">Anfrage {r.id.slice(0, 8)}</p>
-                <p className="text-sm text-gray-600 mt-1">{r.message || '(keine Nachricht)'}</p>
-                <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600' : r.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}>{r.status}</span></p>
-              </div>
-            ))}
-            {requests.length === 0 && <p className="text-gray-500">Noch keine Anfragen.</p>}
-          </div>
-        </div>
-      )}
-
-      {view === 'overview' && (
-        <>
-          <div className="mb-6 bg-white rounded-2xl border border-gray-100 p-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <input placeholder="Job / Titel" value={filterJob} onChange={e => setFilterJob(e.target.value)} className="p-2 border rounded-lg text-sm" />
-              <input placeholder="Branche" value={filterIndustry} onChange={e => setFilterIndustry(e.target.value)} className="p-2 border rounded-lg text-sm" />
-              <input placeholder="Skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} className="p-2 border rounded-lg text-sm" />
-              <input placeholder="Min. Erfahrung (Jahre)" value={filterExp} onChange={e => setFilterExp(e.target.value)} className="p-2 border rounded-lg text-sm" />
-              <input placeholder="Max. Gehalt (k€)" value={filterSalary} onChange={e => setFilterSalary(e.target.value)} className="p-2 border rounded-lg text-sm" />
-              <input placeholder="Ort" value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="p-2 border rounded-lg text-sm" />
-            </div>
-          </div>
-
-          <h2 className="text-2xl font-semibold mb-6 text-gray-900">Kandidaten ({filtered.length})</h2>
-          <div className="space-y-4">
-            {filtered.map(c => {
-              const isHidden = c.currently_employed && !isAdmin
-              return (
-                <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative" onMouseEnter={() => logView(c.id)}>
-                  {isHidden && (
-                    <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
-                      <div className="text-center px-6">
-                        <p className="font-semibold text-gray-800">Aktuell noch im Job</p>
-                        <p className="text-sm text-gray-500 mt-1">Premium-Feature – bald verfügbar</p>
+                    <p className="mt-3 text-sm text-slate-700">{r.message || '(keine Nachricht)'}</p>
+                    <p className="text-xs text-slate-400 mt-3">{new Date(r.created_at).toLocaleString()}</p>
+                    {r.status === 'pending' && (
+                      <div className="mt-5 flex gap-2 justify-end">
+                        <button onClick={() => updateRequestStatus(r.id, 'approved')} className="bg-green-600 text-white text-sm px-4 py-2 rounded-xl font-medium">Freigeben</button>
+                        <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="bg-red-600 text-white text-sm px-4 py-2 rounded-xl font-medium">Ablehnen</button>
                       </div>
-                    </div>
-                  )}
-                  <div className={`p-6 flex gap-5 ${isHidden ? 'filter blur-[2px]' : ''}`}>
-                    {c.photo_url ? (
-                      <img src={c.photo_url} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
-                    ) : (
-                      <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm flex-shrink-0">Foto</div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-xl font-semibold text-gray-900">{isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}</h3>
-                      <p className="text-gray-600 mt-0.5">{c.title || 'Kein Titel'} · {c.location || 'Kein Ort'}</p>
-                      {c.experience_years != null && (
-                        <p className="text-sm text-gray-500 mt-1">{c.experience_years} Jahre Berufserfahrung</p>
-                      )}
-                      {c.salary_desired_k && (
-                        <p className="text-sm font-medium text-gray-800 mt-1">{c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>
-                      )}
-                      {c.bio && <p className="mt-3 text-gray-700 text-sm leading-relaxed line-clamp-2">{isHidden ? '••••••••••••••••••••' : c.bio}</p>}
-                      {(c.skills?.length > 0 || c.industries?.length > 0) && (
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {c.skills?.map((s: string) => (
-                            <span key={s} className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">{s}</span>
-                          ))}
-                          {c.industries?.map((i: string) => (
-                            <span key={i} className="px-2.5 py-0.5 bg-green-100 text-green-800 text-xs rounded-full font-medium">{i}</span>
-                          ))}
-                        </div>
-                      )}
-                      <div className="mt-4 flex items-center gap-3">
-                        {c.cv_url && !isHidden && (
-                          <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
-                            Lebenslauf (PDF) →
-                          </a>
-                        )}
-                        {isRecruiter && !isHidden && (
-                          <button
-                            onClick={() => requestContact(c.id)}
-                            className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium"
-                          >
-                            Kandidat anfragen
-                          </button>
-                        )}
-                      </div>
+                  </div>
+                ))}
+                {adminRequests.length === 0 && <p className="text-slate-500">Keine Anfragen.</p>}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-semibold mb-5 tracking-tight">Profil-Ansichten</h2>
+              <div className="space-y-2">
+                {adminViews.map(v => (
+                  <div key={v.id} className="bg-white p-4 rounded-xl border border-slate-100 text-sm flex justify-between">
+                    <span>Ansicht {v.id.slice(0, 8)}</span>
+                    <span className="text-slate-400">{new Date(v.viewed_at).toLocaleString()}</span>
+                  </div>
+                ))}
+                {adminViews.length === 0 && <p className="text-slate-500">Noch keine Ansichten.</p>}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === 'requests' && !isRecruiter && (
+          <div>
+            <h2 className="text-2xl font-semibold mb-6 tracking-tight">Anfragen an dich</h2>
+            <div className="space-y-4">
+              {candidateRequests.map(r => (
+                <div key={r.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                  <div className="flex gap-4">
+                    {r.logo_url && <img src={r.logo_url} alt="" className="w-12 h-12 rounded-xl object-cover" />}
+                    <div>
+                      <p className="font-semibold text-lg">{r.company_name || 'Unbekannte Firma'}</p>
+                      <p className="mt-2 text-sm text-slate-700">{r.message || '(keine Nachricht)'}</p>
+                      <p className="text-xs mt-3">Status: <span className={r.status === 'approved' ? 'text-green-600 font-medium' : r.status === 'rejected' ? 'text-red-600' : 'text-amber-600'}>{r.status}</span></p>
+                      <p className="text-xs text-slate-400 mt-1">{new Date(r.created_at).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
-              )
-            })}
-            {filtered.length === 0 && <p className="text-gray-500">Keine Kandidaten gefunden.</p>}
-          </div>
-        </>
-      )}
-
-      {view === 'profile' && isRecruiter && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-2xl">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-900">Firmenprofil</h2>
-          {msg && <div className={`p-3 rounded-lg mb-6 text-sm ${msg.includes('Fehler') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
-
-          <div className="flex items-center gap-6 mb-8">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-28 h-28 rounded-2xl object-cover border border-gray-200" />
-            ) : (
-              <div className="w-28 h-28 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400">Logo</div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Firmenlogo</label>
-              <input type="file" accept="image/*" onChange={uploadLogo} disabled={uploadingLogo} className="text-sm text-gray-600" />
-              {uploadingLogo && <p className="text-xs text-gray-500 mt-1">Lade hoch...</p>}
+              ))}
+              {candidateRequests.length === 0 && <p className="text-slate-500">Noch keine Anfragen an dich.</p>}
             </div>
           </div>
+        )}
 
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Firmenname</label>
-              <input value={companyName} onChange={e => setCompanyName(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="z.B. allO Technology GmbH" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Wen sucht ihr aktuell?</label>
-              <textarea value={searchingFor} onChange={e => setSearchingFor(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" rows={4} placeholder="z.B. Senior Sales Manager für DACH, Full-Stack Entwickler..." />
-            </div>
-            <button onClick={saveRecruiterProfile} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 transition">
-              {saving ? 'Speichere...' : 'Firmenprofil speichern'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {view === 'profile' && !isRecruiter && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-2xl">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-900">Mein Profil</h2>
-          {msg && <div className={`p-3 rounded-lg mb-6 text-sm ${msg.includes('Fehler') || msg.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
-
-          <div className="flex items-center gap-6 mb-8">
-            {photoUrl ? (
-              <img src={photoUrl} alt="Profil" className="w-28 h-28 rounded-2xl object-cover border border-gray-200" />
-            ) : (
-              <div className="w-28 h-28 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400">Foto</div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Profilbild</label>
-              <input type="file" accept="image/*" onChange={uploadPhoto} disabled={uploadingPhoto} className="text-sm text-gray-600" />
-              {uploadingPhoto && <p className="text-xs text-gray-500 mt-1">Lade hoch...</p>}
+        {view === 'requests' && isRecruiter && (
+          <div>
+            <h2 className="text-2xl font-semibold mb-6 tracking-tight">Meine Anfragen</h2>
+            <div className="space-y-3">
+              {requests.map(r => (
+                <div key={r.id} className="bg-white p-5 rounded-2xl border border-slate-100">
+                  <p className="font-medium">Anfrage {r.id.slice(0, 8)}</p>
+                  <p className="text-sm text-slate-600 mt-1">{r.message || '(keine Nachricht)'}</p>
+                  <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600' : r.status === 'rejected' ? 'text-red-600' : 'text-amber-600'}>{r.status}</span></p>
+                </div>
+              ))}
+              {requests.length === 0 && <p className="text-slate-500">Noch keine Anfragen.</p>}
             </div>
           </div>
+        )}
 
-          <div className="mb-8">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Lebenslauf (PDF)</label>
-            <input type="file" accept="application/pdf" onChange={uploadCv} disabled={uploadingCv} className="text-sm text-gray-600" />
-            {uploadingCv && <p className="text-xs text-gray-500 mt-1">Lade CV hoch...</p>}
-            {cvUrl && (
-              <div className="mt-2 flex items-center gap-4">
-                <a href={cvUrl} target="_blank" className="text-blue-600 underline text-sm">Aktueller CV ansehen</a>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!confirm('CV wirklich löschen?')) return
-                    setCvUrl('')
-                    setMsg('CV entfernt (bitte Profil speichern)')
-                  }}
-                  className="text-red-600 text-sm underline"
-                >
-                  Löschen
-                </button>
+        {view === 'overview' && (
+          <>
+            <div className="mb-8 bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <input placeholder="Job / Titel" value={filterJob} onChange={e => setFilterJob(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Branche" value={filterIndustry} onChange={e => setFilterIndustry(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Min. Erfahrung (Jahre)" value={filterExp} onChange={e => setFilterExp(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Max. Gehalt (k€)" value={filterSalary} onChange={e => setFilterSalary(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Ort" value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Vollständiger Name</label>
-              <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            <h2 className="text-2xl font-semibold mb-6 tracking-tight">Kandidaten ({filtered.length})</h2>
+            <div className="space-y-4">
+              {filtered.map(c => {
+                const isHidden = c.currently_employed && !isAdmin
+                return (
+                  <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-all relative" onMouseEnter={() => logView(c.id)}>
+                    {isHidden && (
+                      <div className="absolute inset-0 bg-white/75 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-2xl">
+                        <div className="text-center px-6">
+                          <p className="font-semibold text-slate-800">Aktuell noch im Job</p>
+                          <p className="text-sm text-slate-500 mt-1">Premium-Feature – bald verfügbar</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className={`p-6 flex gap-5 ${isHidden ? 'filter blur-[1.5px]' : ''}`}>
+                      {c.photo_url ? (
+                        <img src={c.photo_url} alt="" className="w-20 h-20 rounded-2xl object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 text-sm flex-shrink-0">Foto</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-xl font-semibold text-slate-900">{isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}</h3>
+                        <p className="text-slate-600 mt-0.5">{c.title || 'Kein Titel'} · {c.location || 'Kein Ort'}</p>
+                        {c.experience_years != null && (
+                          <p className="text-sm text-slate-500 mt-1">{c.experience_years} Jahre Berufserfahrung</p>
+                        )}
+                        {c.salary_desired_k && (
+                          <p className="text-sm font-medium text-slate-800 mt-1">{c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>
+                        )}
+                        {c.bio && <p className="mt-3 text-slate-700 text-sm leading-relaxed line-clamp-2">{isHidden ? '••••••••••••••••••••' : c.bio}</p>}
+                        {(c.skills?.length > 0 || c.industries?.length > 0) && (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {c.skills?.map((s: string) => (
+                              <span key={s} className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">{s}</span>
+                            ))}
+                            {c.industries?.map((i: string) => (
+                              <span key={i} className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-full font-medium">{i}</span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="mt-4 flex items-center gap-3">
+                          {c.cv_url && !isHidden && (
+                            <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
+                              Lebenslauf (PDF) →
+                            </a>
+                          )}
+                          {isRecruiter && !isHidden && (
+                            <button
+                              onClick={() => requestContact(c.id)}
+                              className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-xl font-medium transition"
+                            >
+                              Kandidat anfragen
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {filtered.length === 0 && <p className="text-slate-500">Keine Kandidaten gefunden.</p>}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gesuchter Job</label>
-              <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="z.B. Senior Frontend Entwickler" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
-              <input value={location} onChange={e => setLocation(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="Hamburg, Remote..." />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+          </>
+        )}
+
+        {view === 'profile' && isRecruiter && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 max-w-2xl">
+            <h2 className="text-2xl font-semibold mb-6 tracking-tight">Firmenprofil</h2>
+            {msg && <div className={`p-3 rounded-xl mb-6 text-sm ${msg.includes('Fehler') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
+
+            <div className="flex items-center gap-6 mb-8">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="w-28 h-28 rounded-2xl object-cover border border-slate-200" />
+              ) : (
+                <div className="w-28 h-28 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">Logo</div>
+              )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Jahre Berufserfahrung</label>
-                <input type="number" value={experience} onChange={e => setExperience(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Firmenlogo</label>
+                <input type="file" accept="image/*" onChange={uploadLogo} disabled={uploadingLogo} className="text-sm text-slate-600" />
+                {uploadingLogo && <p className="text-xs text-slate-500 mt-1">Lade hoch...</p>}
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Firmenname</label>
+                <input value={companyName} onChange={e => setCompanyName(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="z.B. allO Technology GmbH" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Verfügbar ab</label>
-                <input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Wen sucht ihr aktuell?</label>
+                <textarea value={searchingFor} onChange={e => setSearchingFor(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" rows={4} placeholder="z.B. Senior Sales Manager für DACH..." />
               </div>
+              <button onClick={saveRecruiterProfile} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 transition">
+                {saving ? 'Speichere...' : 'Firmenprofil speichern'}
+              </button>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Wunschgehalt (in 1.000 €)</label>
-                <input type="number" value={salary} onChange={e => setSalary(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="75" />
-              </div>
-              <div className="flex items-end pb-2">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={negotiable} onChange={e => setNegotiable(e.target.checked)} className="rounded" />
-                  <span className="text-sm text-gray-700">verhandelbar</span>
-                </label>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Aktueller Arbeitgeber</label>
-              <input value={currentCompany} onChange={e => setCurrentCompany(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" />
-            </div>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={employed} onChange={e => setEmployed(e.target.checked)} className="rounded" />
-              <span className="text-sm text-gray-700">Ich bin aktuell noch im Job</span>
-            </label>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-              <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" rows={3} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Skills (kommagetrennt)</label>
-              <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="React, TypeScript, Sales..." />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Branchen (kommagetrennt)</label>
-              <input value={industries} onChange={e => setIndustries(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="IT, SaaS, Hospitality..." />
-            </div>
-            <button onClick={saveProfile} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 transition">
-              {saving ? 'Speichere...' : 'Profil speichern'}
-            </button>
           </div>
-        </div>
-      )}
+        )}
+
+        {view === 'profile' && !isRecruiter && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 max-w-2xl">
+            <h2 className="text-2xl font-semibold mb-6 tracking-tight">Mein Profil</h2>
+            {msg && <div className={`p-3 rounded-xl mb-6 text-sm ${msg.includes('Fehler') || msg.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
+
+            <div className="flex items-center gap-6 mb-8">
+              {photoUrl ? (
+                <img src={photoUrl} alt="Profil" className="w-28 h-28 rounded-2xl object-cover border border-slate-200" />
+              ) : (
+                <div className="w-28 h-28 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">Foto</div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Profilbild</label>
+                <input type="file" accept="image/*" onChange={uploadPhoto} disabled={uploadingPhoto} className="text-sm text-slate-600" />
+                {uploadingPhoto && <p className="text-xs text-slate-500 mt-1">Lade hoch...</p>}
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <label className="block text-sm font-medium text-slate-700 mb-1">Lebenslauf (PDF)</label>
+              <input type="file" accept="application/pdf" onChange={uploadCv} disabled={uploadingCv} className="text-sm text-slate-600" />
+              {uploadingCv && <p className="text-xs text-slate-500 mt-1">Lade CV hoch...</p>}
+              {cvUrl && (
+                <div className="mt-2 flex items-center gap-4">
+                  <a href={cvUrl} target="_blank" className="text-blue-600 underline text-sm">Aktueller CV ansehen</a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!confirm('CV wirklich löschen?')) return
+                      setCvUrl('')
+                      setMsg('CV entfernt (bitte Profil speichern)')
+                    }}
+                    className="text-red-600 text-sm underline"
+                  >
+                    Löschen
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Vollständiger Name</label>
+                <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Gesuchter Job</label>
+                <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="z.B. Senior Frontend Entwickler" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Ort</label>
+                <input value={location} onChange={e => setLocation(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Hamburg, Remote..." />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Jahre Berufserfahrung</label>
+                  <input type="number" value={experience} onChange={e => setExperience(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Verfügbar ab</label>
+                  <input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Wunschgehalt (in 1.000 €)</label>
+                  <input type="number" value={salary} onChange={e => setSalary(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="75" />
+                </div>
+                <div className="flex items-end pb-2">
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={negotiable} onChange={e => setNegotiable(e.target.checked)} className="rounded" />
+                    <span className="text-sm text-slate-700">verhandelbar</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Aktueller Arbeitgeber</label>
+                <input value={currentCompany} onChange={e => setCurrentCompany(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={employed} onChange={e => setEmployed(e.target.checked)} className="rounded" />
+                <span className="text-sm text-slate-700">Ich bin aktuell noch im Job</span>
+              </label>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Bio</label>
+                <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" rows={3} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Skills (kommagetrennt)</label>
+                <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="React, TypeScript, Sales..." />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Branchen (kommagetrennt)</label>
+                <input value={industries} onChange={e => setIndustries(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="IT, SaaS, Hospitality..." />
+              </div>
+              <button onClick={saveProfile} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 transition">
+                {saving ? 'Speichere...' : 'Profil speichern'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
