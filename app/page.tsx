@@ -16,11 +16,13 @@ export default function Home() {
   const [recruiterProfile, setRecruiterProfile] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
-  const [view, setView] = useState<'overview' | 'profile' | 'requests' | 'admin'>('overview')
+  const [view, setView] = useState<'overview' | 'profile' | 'requests' | 'admin' | 'notifications'>('overview')
   const [requests, setRequests] = useState<any[]>([])
   const [candidateRequests, setCandidateRequests] = useState<any[]>([])
   const [adminRequests, setAdminRequests] = useState<any[]>([])
   const [adminViews, setAdminViews] = useState<any[]>([])
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const [filterExp, setFilterExp] = useState('')
   const [filterSalary, setFilterSalary] = useState('')
@@ -62,6 +64,7 @@ export default function Home() {
         setUser(u)
         if (u) {
           await loadCandidates()
+          await loadNotifications(u.id)
           if ((u.user_metadata?.role || 'candidate') === 'candidate') {
             await loadProfile(u.id)
             await loadCandidateRequests(u.id)
@@ -88,6 +91,7 @@ export default function Home() {
       setUser(u)
       if (u) {
         await loadCandidates()
+        await loadNotifications(u.id)
         if ((u.user_metadata?.role || 'candidate') === 'candidate') {
           await loadProfile(u.id)
           await loadCandidateRequests(u.id)
@@ -104,6 +108,18 @@ export default function Home() {
     })
     return () => listener.subscription.unsubscribe()
   }, [])
+
+  async function loadNotifications(userId: string) {
+    const { data } = await supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(30)
+    setNotifications(data || [])
+    setUnreadCount((data || []).filter(n => !n.read).length)
+  }
+
+  async function markAllRead() {
+    if (!user) return
+    await supabase.from('notifications').update({ read: true }).eq('user_id', user.id).eq('read', false)
+    await loadNotifications(user.id)
+  }
 
   async function loadCandidates() {
     const { data } = await supabase.from('candidates').select('*').order('created_at', { ascending: false }).limit(50)
@@ -182,7 +198,6 @@ export default function Home() {
   }
 
   async function loadCandidateRequests(userId: string) {
-    // First get the candidate id
     const { data: cand } = await supabase.from('candidates').select('id').eq('user_id', userId).single()
     if (!cand) return
     const { data } = await supabase.from('contact_requests')
@@ -208,8 +223,35 @@ export default function Home() {
   }
 
   async function updateRequestStatus(id: string, status: string) {
+    // Get request details first
+    const { data: req } = await supabase.from('contact_requests').select('*, candidates(user_id, full_name)').eq('id', id).single()
     await supabase.from('contact_requests').update({ status }).eq('id', id)
+
+    if (req) {
+      const title = status === 'approved' ? 'Anfrage freigegeben' : 'Anfrage abgelehnt'
+      const message = status === 'approved'
+        ? `Deine Anfrage an ${req.candidates?.full_name || 'den Kandidaten'} wurde freigegeben.`
+        : `Deine Anfrage an ${req.candidates?.full_name || 'den Kandidaten'} wurde abgelehnt.`
+
+      // Notify recruiter
+      await supabase.from('notifications').insert({
+        user_id: req.recruiter_id,
+        title,
+        message
+      })
+
+      // Notify candidate if approved
+      if (status === 'approved' && req.candidates?.user_id) {
+        await supabase.from('notifications').insert({
+          user_id: req.candidates.user_id,
+          title: 'Neue Kontaktanfrage freigegeben',
+          message: 'Eine Firma möchte Kontakt mit dir aufnehmen.'
+        })
+      }
+    }
+
     await loadAdminRequests()
+    if (user) await loadNotifications(user.id)
   }
 
   async function loadProfile(userId: string) {
@@ -357,6 +399,8 @@ export default function Home() {
     setCandidateRequests([])
     setAdminRequests([])
     setAdminViews([])
+    setNotifications([])
+    setUnreadCount(0)
   }
 
   const filtered = candidates.filter(c => {
@@ -404,6 +448,12 @@ export default function Home() {
       <header className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-blue-600">Job Heroes</h1>
         <div className="flex items-center gap-4">
+          <button onClick={() => { setView('notifications'); markAllRead() }} className="relative p-2 text-gray-600 hover:text-gray-900">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{unreadCount}</span>
+            )}
+          </button>
           <span className="text-sm text-gray-600">{user.email} · {isRecruiter ? 'Recruiter' : 'Kandidat'}{isAdmin ? ' · Admin' : ''}</span>
           <button onClick={signOut} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">Abmelden</button>
         </div>
@@ -422,6 +472,22 @@ export default function Home() {
           <button onClick={() => setView('admin')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'admin' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Admin</button>
         )}
       </nav>
+
+      {view === 'notifications' && (
+        <div>
+          <h2 className="text-2xl font-semibold mb-6">Benachrichtigungen</h2>
+          <div className="space-y-3">
+            {notifications.map(n => (
+              <div key={n.id} className={`p-4 rounded-xl border ${n.read ? 'bg-white' : 'bg-blue-50'}`}>
+                <p className="font-medium">{n.title}</p>
+                <p className="text-sm text-gray-600 mt-1">{n.message}</p>
+                <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleString()}</p>
+              </div>
+            ))}
+            {notifications.length === 0 && <p className="text-gray-500">Keine Benachrichtigungen.</p>}
+          </div>
+        </div>
+      )}
 
       {view === 'admin' && isAdmin && (
         <div className="space-y-8">
