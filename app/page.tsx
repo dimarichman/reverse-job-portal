@@ -644,48 +644,43 @@ export default function Home() {
                       </div>
                     )}
                     <div className={`p-5 sm:p-6 ${isHidden ? 'filter blur-[2px]' : ''}`}>
-                      {/* Header: Photo + Name + Salary */}
-                      <div className="flex gap-4 items-start">
+                      {/* Header: Photo + Name + Title */}
+                      <div className="flex gap-4">
                         {c.photo_url ? (
-                          <img src={c.photo_url} alt="" className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover flex-shrink-0 ring-1 ring-slate-200" />
+                          <img src={c.photo_url} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 ring-1 ring-slate-200" />
                         ) : (
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-xs flex-shrink-0">Foto</div>
+                          <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-xs flex-shrink-0">Foto</div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <h3 className="text-lg font-semibold text-slate-900">{isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}</h3>
-                              <p className="text-slate-600 text-sm mt-0.5">{c.title || 'Kein Titel'}</p>
-                            </div>
-                            {c.salary_desired_k && (
-                              <div className="text-right flex-shrink-0">
-                                <p className="text-xs uppercase tracking-wide text-slate-400">Wunschgehalt</p>
-                                <p className="text-lg font-semibold text-slate-900">{c.salary_desired_k}k €</p>
-                                {c.salary_negotiable && <p className="text-xs text-slate-500">verhandelbar</p>}
-                              </div>
-                            )}
-                          </div>
+                          <h3 className="text-lg font-semibold text-slate-900">{isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}</h3>
+                          <p className="text-slate-700 font-medium mt-0.5">{c.title || 'Kein Titel'}</p>
                         </div>
                       </div>
 
-                      {/* Key facts grid */}
-                      <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {/* Key facts */}
+                      <div className="mt-5 space-y-3">
                         {c.location && (
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Ort</p>
-                            <p className="text-sm font-medium text-slate-800 mt-0.5">{isHidden ? '••••' : c.location}</p>
+                          <div className="flex">
+                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Ort</span>
+                            <span className="text-sm text-slate-800">{isHidden ? '••••' : c.location}</span>
                           </div>
                         )}
                         {c.experience_years != null && (
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Berufserfahrung</p>
-                            <p className="text-sm font-medium text-slate-800 mt-0.5">{c.experience_years} Jahre</p>
+                          <div className="flex">
+                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Erfahrung</span>
+                            <span className="text-sm text-slate-800">{c.experience_years} Jahre</span>
                           </div>
                         )}
                         {c.available_from && (
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-slate-400">Verfügbar ab</p>
-                            <p className="text-sm font-medium text-slate-800 mt-0.5">{new Date(c.available_from).toLocaleDateString('de-DE')}</p>
+                          <div className="flex">
+                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Verfügbar</span>
+                            <span className="text-sm text-slate-800">{new Date(c.available_from).toLocaleDateString('de-DE')}</span>
+                          </div>
+                        )}
+                        {c.salary_desired_k && (
+                          <div className="flex">
+                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Wunschgehalt</span>
+                            <span className="text-sm text-slate-800">{c.salary_desired_k}k € {c.salary_negotiable && <span className="text-slate-500">(verhandelbar)</span>}</span>
                           </div>
                         )}
                       </div>
