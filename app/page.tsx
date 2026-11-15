@@ -11,6 +11,13 @@ const AVAILABILITY_OPTIONS = [
   { value: 'datum', label: 'Ab bestimmtem Datum' },
 ]
 
+const PROCESS_OPTIONS = [
+  { value: 'open', label: 'Offen' },
+  { value: 'in_process', label: 'Im Prozess' },
+  { value: 'hired', label: 'Eingestellt' },
+  { value: 'rejected', label: 'Abgelehnt' },
+]
+
 const ONBOARDING_STEPS = ['name', 'title', 'location', 'experience', 'availability', 'employed', 'optional']
 
 export default function Home() {
@@ -39,6 +46,7 @@ export default function Home() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [needsProfile, setNeedsProfile] = useState(false)
   const [onboardingStep, setOnboardingStep] = useState(0)
+  const [isActive, setIsActive] = useState(true)
 
   const [filterExp, setFilterExp] = useState('')
   const [filterSalary, setFilterSalary] = useState('')
@@ -292,6 +300,29 @@ export default function Home() {
     await loadAdminRecruiters()
   }
 
+  async function toggleCertified(candidateId: string, current: boolean) {
+    await supabase.from('candidates').update({ is_certified: !current }).eq('id', candidateId)
+    await loadCandidates()
+  }
+
+  async function toggleActive() {
+    if (!profile) return
+    const next = !isActive
+    await supabase.from('candidates').update({ is_active: next }).eq('id', profile.id)
+    setIsActive(next)
+    setProfile({ ...profile, is_active: next })
+    await loadCandidates()
+  }
+
+  async function updateProcessStatus(requestId: string, processStatus: string) {
+    await supabase.from('contact_requests').update({ process_status: processStatus }).eq('id', requestId)
+    if (user) {
+      await loadCandidateRequests(user.id)
+      await loadMyRequests(user.id)
+      if (isAdmin) await loadAdminRequests()
+    }
+  }
+
   async function updateRequestStatus(id: string, status: string) {
     const { data: req } = await supabase.from('contact_requests').select('*').eq('id', id).single()
     await supabase.from('contact_requests').update({ status }).eq('id', id)
@@ -343,6 +374,7 @@ export default function Home() {
       setCvUrl(data.cv_url || '')
       setCandidatePhone(data.phone || '')
       setCandidateLinkedin(data.linkedin || '')
+      setIsActive(data.is_active !== false)
       setNeedsProfile(false)
       return true
     }
@@ -428,6 +460,7 @@ export default function Home() {
       cv_url: cvUrl || null,
       phone: candidatePhone || null,
       linkedin: candidateLinkedin || null,
+      is_active: isActive,
     }
     try {
       if (profile) {
@@ -515,6 +548,7 @@ export default function Home() {
   }
 
   const filtered = candidates.filter(c => {
+    if (c.is_active === false && !isAdmin) return false
     if (filterExp && (c.experience_years || 0) < parseInt(filterExp)) return false
     if (filterSalary && (c.salary_desired_k || 999) > parseInt(filterSalary)) return false
     if (filterLocation && !c.location?.toLowerCase().includes(filterLocation.toLowerCase())) return false
@@ -655,6 +689,26 @@ export default function Home() {
         {view === 'admin' && isAdmin && (
           <div className="space-y-10">
             <div>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 tracking-tight">Kandidaten zertifizieren</h2>
+              <div className="space-y-3">
+                {candidates.map(c => (
+                  <div key={c.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-semibold">{c.full_name || 'Unbekannt'} {c.is_certified && <span className="text-emerald-600 text-sm">✓</span>}</p>
+                      <p className="text-sm text-slate-500">{c.title || 'Kein Titel'}</p>
+                    </div>
+                    <button
+                      onClick={() => toggleCertified(c.id, !!c.is_certified)}
+                      className={`text-sm px-4 py-2 rounded-xl font-medium ${c.is_certified ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}
+                    >
+                      {c.is_certified ? 'Zertifiziert' : 'Zertifizieren'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <h2 className="text-xl sm:text-2xl font-semibold mb-4 tracking-tight">Recruiter & Premium</h2>
               <div className="space-y-3">
                 {adminRecruiters.map(r => (
@@ -689,6 +743,14 @@ export default function Home() {
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{r.status}</span>
                     </div>
                     <p className="mt-3 text-sm text-slate-700">{r.message || '(keine Nachricht)'}</p>
+                    {r.status === 'approved' && (
+                      <div className="mt-3">
+                        <label className="text-xs text-slate-500">Prozess-Status</label>
+                        <select value={r.process_status || 'open'} onChange={e => updateProcessStatus(r.id, e.target.value)} className="w-full mt-1 p-2 border border-slate-200 rounded-lg text-sm">
+                          {PROCESS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                      </div>
+                    )}
                     {r.recruiter_phone && <p className="text-xs text-slate-500 mt-2">Telefon: {r.recruiter_phone}</p>}
                     <p className="text-xs text-slate-400 mt-2">{new Date(r.created_at).toLocaleString()}</p>
                     {r.status === 'pending' && (
@@ -726,10 +788,18 @@ export default function Home() {
                 <div key={r.id} className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
                   <div className="flex gap-4">
                     {r.logo_url && <img src={r.logo_url} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover" />}
-                    <div>
+                    <div className="flex-1">
                       <p className="font-semibold text-base sm:text-lg">{r.company_name || 'Unbekannte Firma'}</p>
                       <p className="mt-2 text-sm text-slate-700">{r.message || '(keine Nachricht)'}</p>
                       <p className="text-xs mt-3">Status: <span className={r.status === 'approved' ? 'text-green-600 font-medium' : r.status === 'rejected' ? 'text-red-600' : 'text-amber-600'}>{r.status}</span></p>
+                      {r.status === 'approved' && (
+                        <div className="mt-3">
+                          <label className="text-xs text-slate-500">Prozess-Status</label>
+                          <select value={r.process_status || 'open'} onChange={e => updateProcessStatus(r.id, e.target.value)} className="w-full mt-1 p-2 border border-slate-200 rounded-lg text-sm">
+                            {PROCESS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        </div>
+                      )}
                       <p className="text-xs text-slate-400 mt-1">{new Date(r.created_at).toLocaleString()}</p>
                     </div>
                   </div>
@@ -749,6 +819,9 @@ export default function Home() {
                   <p className="font-medium">Anfrage {r.id.slice(0, 8)}</p>
                   <p className="text-sm text-slate-600 mt-1">{r.message || '(keine Nachricht)'}</p>
                   <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600' : r.status === 'rejected' ? 'text-red-600' : 'text-amber-600'}>{r.status}</span></p>
+                  {r.status === 'approved' && (
+                    <p className="text-xs mt-1 text-slate-500">Prozess: {PROCESS_OPTIONS.find(o => o.value === (r.process_status || 'open'))?.label}</p>
+                  )}
                 </div>
               ))}
               {requests.length === 0 && <p className="text-slate-500">Noch keine Anfragen.</p>}
@@ -795,7 +868,10 @@ export default function Home() {
                           <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-xs flex-shrink-0">Foto</div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-slate-900">{isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}</h3>
+                          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                            {isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}
+                            {c.is_certified && <span className="text-emerald-600 text-sm" title="Zertifiziert">✓</span>}
+                          </h3>
                           <p className="text-slate-700 font-medium mt-0.5">{c.title || 'Kein Titel'}</p>
                         </div>
                       </div>
@@ -1033,7 +1109,12 @@ export default function Home() {
 
         {view === 'profile' && !isRecruiter && !needsProfile && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-8 max-w-2xl">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-5 sm:mb-6 tracking-tight">Mein Profil</h2>
+            <div className="flex justify-between items-start mb-5">
+              <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Mein Profil</h2>
+              <button onClick={toggleActive} className={`text-sm px-4 py-2 rounded-xl font-medium ${isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+                {isActive ? 'Aktiv (auf Suche)' : 'Inaktiv'}
+              </button>
+            </div>
             {msg && <div className={`p-3 rounded-xl mb-6 text-sm ${msg.includes('Fehler') || msg.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-6 mb-8">
