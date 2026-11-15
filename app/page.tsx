@@ -180,6 +180,16 @@ export default function Home() {
     await loadNotifications(user.id)
   }
 
+  function handleNotificationClick(n: any) {
+    if (n.title?.includes('Kontaktanfrage') || n.title?.includes('Prozess')) {
+      setView('admin')
+    } else if (n.title?.includes('Profil') || n.title?.includes('Anmeldung')) {
+      setView('admin')
+    } else {
+      setView('notifications')
+    }
+  }
+
   async function loadCandidates() {
     const { data } = await supabase.from('candidates').select('*').order('created_at', { ascending: false }).limit(50)
     setCandidates(data || [])
@@ -409,16 +419,20 @@ export default function Home() {
   async function requestContact(candidateId: string) {
     if (!user) return
 
-    // Check if already requested this candidate
+    // Block if already in process or approved with this candidate
     const { data: existing } = await supabase
       .from('contact_requests')
-      .select('id, status')
+      .select('id, status, process_status')
       .eq('recruiter_id', user.id)
       .eq('candidate_id', candidateId)
       .maybeSingle()
 
     if (existing) {
-      alert('Du hast diesen Kandidaten bereits angefragt. Mehrfachanfragen sind nicht erlaubt.')
+      if (existing.status === 'approved' && (existing.process_status === 'in_process' || existing.process_status === 'hired')) {
+        alert('Du bist bereits im Gespräch mit diesem Kandidaten.')
+        return
+      }
+      alert('Du hast diesen Kandidaten bereits angefragt.')
       return
     }
 
@@ -428,12 +442,14 @@ export default function Home() {
       return
     }
 
+    const message = window.prompt('Kurze Nachricht (optional):')
+    if (message === null) return // User clicked Cancel
+
     await logView(candidateId)
-    const message = window.prompt('Kurze Nachricht (optional):') || ''
     const { error } = await supabase.from('contact_requests').insert({
       recruiter_id: user.id,
       candidate_id: candidateId,
-      message,
+      message: message || '',
       status: 'pending'
     })
 
@@ -736,7 +752,11 @@ export default function Home() {
             <h2 className="text-xl sm:text-2xl font-semibold mb-5 sm:mb-6 tracking-tight">Benachrichtigungen</h2>
             <div className="space-y-3">
               {notifications.map(n => (
-                <div key={n.id} className={`p-4 sm:p-5 rounded-2xl border ${n.read ? 'bg-white border-slate-100' : 'bg-blue-50 border-blue-100'}`}>
+                <div
+                  key={n.id}
+                  onClick={() => handleNotificationClick(n)}
+                  className={`p-4 sm:p-5 rounded-2xl border cursor-pointer hover:shadow-sm transition ${n.read ? 'bg-white border-slate-100' : 'bg-blue-50 border-blue-100'}`}
+                >
                   <p className="font-medium">{n.title}</p>
                   <p className="text-sm text-slate-600 mt-1">{n.message}</p>
                   <p className="text-xs text-slate-400 mt-2">{new Date(n.created_at).toLocaleString()}</p>
