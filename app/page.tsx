@@ -89,15 +89,7 @@ export default function Home() {
 
   async function notifyAdmin(title: string, message: string) {
     try {
-      const { data } = await supabase.from('notifications').select('user_id').limit(1)
-      // Find admin user id via a simple approach: store it or query
-      // For MVP we insert for the known admin if we can find them
-      const { data: adminUsers } = await supabase.rpc('get_admin_user_id').catch(() => ({ data: null }))
-      // Fallback: if current user is admin, use their id. Otherwise skip silently.
-      if (isAdmin && user) {
-        await supabase.from('notifications').insert({ user_id: user.id, title, message })
-        await loadNotifications(user.id)
-      }
+      await supabase.rpc('notify_admin', { title, message })
     } catch {}
   }
 
@@ -412,12 +404,12 @@ export default function Home() {
     if (!user) return
     await logView(candidateId)
     const message = window.prompt('Kurze Nachricht (optional):') || ''
-    const { error, data } = await supabase.from('contact_requests').insert({
+    const { error } = await supabase.from('contact_requests').insert({
       recruiter_id: user.id,
       candidate_id: candidateId,
       message,
       status: 'pending'
-    }).select().single()
+    })
 
     if (error) {
       alert('Fehler: ' + error.message)
