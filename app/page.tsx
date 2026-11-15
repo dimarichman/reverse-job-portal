@@ -193,42 +193,13 @@ export default function Home() {
     if (!file || !user) return
     setUploadingCv(true)
     setMsg('')
-    let publicUrl = ''
     try {
       const path = `cvs/${user.id}-${Date.now()}.pdf`
       const { error: upErr } = await supabase.storage.from('profiles').upload(path, file, { upsert: true })
       if (upErr) throw upErr
       const { data } = supabase.storage.from('profiles').getPublicUrl(path)
-      publicUrl = data.publicUrl
-
-      try {
-        const session = (await supabase.auth.getSession()).data.session
-        const checkRes = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/redact-cv`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session?.access_token}`,
-            'Content-Type': 'application/json',
-            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-          },
-          body: JSON.stringify({ fileUrl: publicUrl, userId: user.id })
-        })
-        if (checkRes.ok) {
-          const checkData = await checkRes.json()
-          if (checkData.blocked) {
-            await supabase.storage.from('profiles').remove([path])
-            setMsg('❌ ' + (checkData.reason || 'Kontaktdaten gefunden'))
-            e.target.value = ''
-            return
-          }
-          setMsg('✅ CV ist sauber und wurde hochgeladen')
-        } else {
-          setMsg('CV hochgeladen (Validierung nicht verfügbar)')
-        }
-      } catch {
-        setMsg('CV hochgeladen (Validierung übersprungen)')
-      }
-
-      setCvUrl(publicUrl)
+      setCvUrl(data.publicUrl)
+      setMsg('CV hochgeladen')
     } catch (err: any) {
       setMsg('CV-Fehler: ' + err.message)
     } finally {
