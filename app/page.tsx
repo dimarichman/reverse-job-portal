@@ -56,6 +56,7 @@ export default function Home() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
 
   const isAdmin = user?.email?.toLowerCase() === 'dimarachmann@aol.com'
+  const isPremium = isAdmin || recruiterProfile?.is_premium === true
 
   useEffect(() => {
     const check = async () => {
@@ -416,13 +417,11 @@ export default function Home() {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-        {/* Header */}
         <header className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-blue-600 tracking-tight">Job Heroes</h1>
           <button onClick={() => setShowAuth(true)} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium">Anmelden</button>
         </header>
 
-        {/* Hero */}
         <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-12 pb-16 text-center">
           <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight leading-tight">Firmen suchen dich.<br />Nicht umgekehrt.</h2>
           <p className="mt-5 text-lg text-slate-600 max-w-xl mx-auto">Das umgekehrte Job-Portal. Du erstellst dein Profil – Recruiter kommen auf dich zu.</p>
@@ -432,7 +431,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Features */}
         <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-20">
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-100">
@@ -459,7 +457,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Auth Modal */}
         {showAuth && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowAuth(false)}>
             <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8" onClick={e => e.stopPropagation()}>
@@ -503,7 +500,7 @@ export default function Home() {
                 <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">{unreadCount}</span>
               )}
             </button>
-            <span className="text-xs sm:text-sm text-slate-600 hidden md:inline">{user.email} · {isRecruiter ? 'Recruiter' : 'Kandidat'}{isAdmin ? ' · Admin' : ''}</span>
+            <span className="text-xs sm:text-sm text-slate-600 hidden md:inline">{user.email} · {isRecruiter ? 'Recruiter' : 'Kandidat'}{isAdmin ? ' · Admin' : ''}{isPremium && isRecruiter ? ' · Premium' : ''}</span>
             <button onClick={signOut} className="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition">Abmelden</button>
           </div>
         </header>
@@ -632,7 +629,7 @@ export default function Home() {
             <h2 className="text-xl sm:text-2xl font-semibold mb-5 sm:mb-6 tracking-tight">Kandidaten ({filtered.length})</h2>
             <div className="space-y-4 sm:space-y-5">
               {filtered.map(c => {
-                const isHidden = c.currently_employed && !isAdmin
+                const isHidden = c.currently_employed && !isPremium
                 return (
                   <div key={c.id} className="bg-white rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 relative" onMouseEnter={() => logView(c.id)}>
                     {isHidden && (
@@ -642,7 +639,7 @@ export default function Home() {
                             <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                           </div>
                           <p className="font-semibold text-slate-800">Aktuell noch im Job</p>
-                          <p className="text-sm text-slate-500 mt-1">Premium-Feature – bald verfügbar</p>
+                          <p className="text-sm text-slate-500 mt-1">Premium erforderlich</p>
                         </div>
                       </div>
                     )}
