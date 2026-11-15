@@ -11,6 +11,8 @@ const AVAILABILITY_OPTIONS = [
   { value: 'datum', label: 'Ab bestimmtem Datum' },
 ]
 
+const ONBOARDING_STEPS = ['name', 'title', 'location', 'experience', 'availability', 'employed', 'optional']
+
 export default function Home() {
   const [user, setUser] = useState<any>(null)
   const [email, setEmail] = useState('')
@@ -35,6 +37,7 @@ export default function Home() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [needsProfile, setNeedsProfile] = useState(false)
+  const [onboardingStep, setOnboardingStep] = useState(0)
 
   const [filterExp, setFilterExp] = useState('')
   const [filterSalary, setFilterSalary] = useState('')
@@ -89,7 +92,7 @@ export default function Home() {
             if (!hasProfile) {
               setNeedsProfile(true)
               setView('profile')
-              // Prefill from auth metadata
+              setOnboardingStep(0)
               setCandidatePhone(u.user_metadata?.phone || '')
               setCandidateLinkedin(u.user_metadata?.linkedin || '')
             }
@@ -126,6 +129,7 @@ export default function Home() {
           if (!hasProfile) {
             setNeedsProfile(true)
             setView('profile')
+            setOnboardingStep(0)
             setCandidatePhone(u.user_metadata?.phone || '')
             setCandidateLinkedin(u.user_metadata?.linkedin || '')
           }
@@ -406,6 +410,7 @@ export default function Home() {
         setProfile(data)
       }
       setNeedsProfile(false)
+      setOnboardingStep(0)
       setMsg('Profil gespeichert!')
       setView('overview')
     } catch (e: any) {
@@ -413,6 +418,18 @@ export default function Home() {
     } finally {
       setSaving(false)
     }
+  }
+
+  function nextStep() {
+    if (onboardingStep < ONBOARDING_STEPS.length - 1) {
+      setOnboardingStep(onboardingStep + 1)
+    } else {
+      saveProfile()
+    }
+  }
+
+  function prevStep() {
+    if (onboardingStep > 0) setOnboardingStep(onboardingStep - 1)
   }
 
   async function handleAuth(e: React.FormEvent) {
@@ -455,6 +472,7 @@ export default function Home() {
     setNotifications([])
     setUnreadCount(0)
     setNeedsProfile(false)
+    setOnboardingStep(0)
     setShowAuth(false)
   }
 
@@ -557,6 +575,7 @@ export default function Home() {
   }
 
   const isRecruiter = (user.user_metadata?.role || 'candidate') === 'recruiter'
+  const currentStep = ONBOARDING_STEPS[onboardingStep]
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -588,12 +607,6 @@ export default function Home() {
             <button onClick={() => setView('admin')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'admin' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Admin</button>
           )}
         </nav>
-
-        {needsProfile && !isRecruiter && view === 'profile' && (
-          <div className="mb-6 bg-blue-50 border border-blue-100 text-blue-800 p-4 rounded-2xl text-sm">
-            Willkommen! Bitte fülle zuerst dein Profil aus, damit Recruiter dich finden können.
-          </div>
-        )}
 
         {view === 'notifications' && (
           <div>
@@ -870,7 +883,101 @@ export default function Home() {
           </div>
         )}
 
-        {view === 'profile' && !isRecruiter && (
+        {view === 'profile' && !isRecruiter && needsProfile && (
+          <div className="max-w-md mx-auto">
+            <div className="mb-6 flex items-center justify-between text-sm text-slate-500">
+              <span>Schritt {onboardingStep + 1} von {ONBOARDING_STEPS.length}</span>
+              <span>{Math.round(((onboardingStep + 1) / ONBOARDING_STEPS.length) * 100)}%</span>
+            </div>
+            <div className="h-1.5 bg-slate-200 rounded-full mb-8">
+              <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${((onboardingStep + 1) / ONBOARDING_STEPS.length) * 100}%` }} />
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
+              {currentStep === 'name' && (
+                <>
+                  <h2 className="text-xl font-semibold mb-2">Wie heißt du?</h2>
+                  <p className="text-sm text-slate-500 mb-6">Dein Name wird im Profil angezeigt.</p>
+                  <input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Vor- und Nachname" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                </>
+              )}
+              {currentStep === 'title' && (
+                <>
+                  <h2 className="text-xl font-semibold mb-2">Welchen Job suchst du?</h2>
+                  <p className="text-sm text-slate-500 mb-6">z.B. Sales Director, Frontend Engineer...</p>
+                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Gesuchter Job" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                </>
+              )}
+              {currentStep === 'location' && (
+                <>
+                  <h2 className="text-xl font-semibold mb-2">Wo kannst du arbeiten?</h2>
+                  <p className="text-sm text-slate-500 mb-6">Stadt, Remote, Hybrid...</p>
+                  <input value={location} onChange={e => setLocation(e.target.value)} placeholder="z.B. Hamburg / Remote" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                </>
+              )}
+              {currentStep === 'experience' && (
+                <>
+                  <h2 className="text-xl font-semibold mb-2">Wie viele Jahre Berufserfahrung hast du?</h2>
+                  <input type="number" value={experience} onChange={e => setExperience(e.target.value)} placeholder="z.B. 5" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-4" />
+                </>
+              )}
+              {currentStep === 'availability' && (
+                <>
+                  <h2 className="text-xl font-semibold mb-2">Wann bist du verfügbar?</h2>
+                  <select value={availability} onChange={e => setAvailability(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-4">
+                    {AVAILABILITY_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  {availability === 'datum' && (
+                    <input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-3" />
+                  )}
+                </>
+              )}
+              {currentStep === 'employed' && (
+                <>
+                  <h2 className="text-xl font-semibold mb-2">Bist du aktuell noch im Job?</h2>
+                  <p className="text-sm text-slate-500 mb-6">Wenn ja, wird dein Profil für normale Recruiter verdeckt angezeigt.</p>
+                  <div className="space-y-3">
+                    <button type="button" onClick={() => setEmployed(false)} className={`w-full p-4 rounded-xl border text-left ${!employed ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>Nein, ich bin frei</button>
+                    <button type="button" onClick={() => setEmployed(true)} className={`w-full p-4 rounded-xl border text-left ${employed ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>Ja, ich bin noch angestellt</button>
+                  </div>
+                  {employed && (
+                    <input value={currentCompany} onChange={e => setCurrentCompany(e.target.value)} placeholder="Aktueller Arbeitgeber (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-4" />
+                  )}
+                </>
+              )}
+              {currentStep === 'optional' && (
+                <>
+                  <h2 className="text-xl font-semibold mb-2">Noch etwas hinzufügen?</h2>
+                  <p className="text-sm text-slate-500 mb-6">Alles optional – du kannst es später ergänzen.</p>
+                  <div className="space-y-4">
+                    <input value={salary} onChange={e => setSalary(e.target.value)} placeholder="Wunschgehalt in 1.000 € (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input value={skills} onChange={e => setSkills(e.target.value)} placeholder="Skills, kommagetrennt (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input value={industries} onChange={e => setIndustries(e.target.value)} placeholder="Branchen, kommagetrennt (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                    <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Kurze Bio (optional)" rows={3} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-3 mt-8">
+                {onboardingStep > 0 && (
+                  <button type="button" onClick={prevStep} className="px-5 py-3 rounded-xl border border-slate-200 text-slate-700 font-medium">Zurück</button>
+                )}
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={saving || (currentStep === 'name' && !fullName.trim())}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-medium disabled:opacity-50"
+                >
+                  {onboardingStep === ONBOARDING_STEPS.length - 1 ? (saving ? 'Speichere...' : 'Fertig') : 'Weiter'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === 'profile' && !isRecruiter && !needsProfile && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-8 max-w-2xl">
             <h2 className="text-xl sm:text-2xl font-semibold mb-5 sm:mb-6 tracking-tight">Mein Profil</h2>
             {msg && <div className={`p-3 rounded-xl mb-6 text-sm ${msg.includes('Fehler') || msg.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
