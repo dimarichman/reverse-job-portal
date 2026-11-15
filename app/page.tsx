@@ -21,6 +21,8 @@ export default function Home() {
   const [filterSalary, setFilterSalary] = useState('')
   const [filterLocation, setFilterLocation] = useState('')
   const [filterSkill, setFilterSkill] = useState('')
+  const [filterJob, setFilterJob] = useState('')
+  const [filterIndustry, setFilterIndustry] = useState('')
 
   const [fullName, setFullName] = useState('')
   const [title, setTitle] = useState('')
@@ -247,6 +249,8 @@ export default function Home() {
     if (filterSalary && (c.salary_desired_k || 999) > parseInt(filterSalary)) return false
     if (filterLocation && !c.location?.toLowerCase().includes(filterLocation.toLowerCase())) return false
     if (filterSkill && !c.skills?.some((s: string) => s.toLowerCase().includes(filterSkill.toLowerCase()))) return false
+    if (filterJob && !c.title?.toLowerCase().includes(filterJob.toLowerCase())) return false
+    if (filterIndustry && !c.industries?.some((i: string) => i.toLowerCase().includes(filterIndustry.toLowerCase()))) return false
     return true
   })
 
@@ -310,11 +314,13 @@ export default function Home() {
       {view === 'overview' || isRecruiter ? (
         <>
           <div className="mb-6 bg-white rounded-2xl border border-gray-100 p-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <input placeholder="Job / Titel" value={filterJob} onChange={e => setFilterJob(e.target.value)} className="p-2 border rounded-lg text-sm" />
+              <input placeholder="Branche" value={filterIndustry} onChange={e => setFilterIndustry(e.target.value)} className="p-2 border rounded-lg text-sm" />
+              <input placeholder="Skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} className="p-2 border rounded-lg text-sm" />
               <input placeholder="Min. Erfahrung (Jahre)" value={filterExp} onChange={e => setFilterExp(e.target.value)} className="p-2 border rounded-lg text-sm" />
               <input placeholder="Max. Gehalt (k€)" value={filterSalary} onChange={e => setFilterSalary(e.target.value)} className="p-2 border rounded-lg text-sm" />
               <input placeholder="Ort" value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="p-2 border rounded-lg text-sm" />
-              <input placeholder="Skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} className="p-2 border rounded-lg text-sm" />
             </div>
           </div>
 
