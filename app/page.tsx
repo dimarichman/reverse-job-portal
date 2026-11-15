@@ -769,19 +769,19 @@ export default function Home() {
         )}
 
         {view === 'admin' && isAdmin && (
-          <div className="space-y-10">
+          <div className="space-y-8">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 tracking-tight">Kandidaten zertifizieren</h2>
-              <div className="space-y-3">
+              <h2 className="text-lg font-semibold mb-3">Kandidaten zertifizieren</h2>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto border border-slate-200 rounded-xl bg-white">
                 {candidates.map(c => (
-                  <div key={c.id} className="bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-semibold">{c.full_name || 'Unbekannt'} {c.is_certified && <span className="text-emerald-600 text-sm">✓</span>}</p>
-                      <p className="text-sm text-slate-500">{c.title || 'Kein Titel'}</p>
+                  <div key={c.id} className="px-3 py-2 flex items-center justify-between gap-3 border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{c.full_name || 'Unbekannt'} {c.is_certified && <span className="text-emerald-600">✓</span>}</p>
+                      <p className="text-xs text-slate-500 truncate">{c.title || 'Kein Titel'}</p>
                     </div>
                     <button
                       onClick={() => toggleCertified(c.id, !!c.is_certified)}
-                      className={`text-sm px-4 py-2 rounded-xl font-medium ${c.is_certified ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}
+                      className={`text-xs px-3 py-1 rounded-lg font-medium flex-shrink-0 ${c.is_certified ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}
                     >
                       {c.is_certified ? 'Zertifiziert' : 'Zertifizieren'}
                     </button>
@@ -791,74 +791,68 @@ export default function Home() {
             </div>
 
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 tracking-tight">Recruiter & Premium</h2>
-              <div className="space-y-3">
+              <h2 className="text-lg font-semibold mb-3">Recruiter & Premium</h2>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto border border-slate-200 rounded-xl bg-white">
                 {adminRecruiters.map(r => (
-                  <div key={r.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="font-semibold">{r.company_name || 'Unbekannte Firma'}</p>
-                      <p className="text-sm text-slate-500">{r.searching_for || 'Keine Beschreibung'}</p>
-                      {r.phone && <p className="text-xs text-slate-400 mt-1">{r.phone}</p>}
+                  <div key={r.id} className="px-3 py-2 flex items-center justify-between gap-3 border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{r.company_name || 'Unbekannte Firma'}</p>
+                      <p className="text-xs text-slate-500 truncate">{r.searching_for || 'Keine Beschreibung'}</p>
                     </div>
                     <button
                       onClick={() => togglePremium(r.id, !!r.is_premium)}
-                      className={`text-sm px-4 py-2 rounded-xl font-medium ${r.is_premium ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}
+                      className={`text-xs px-3 py-1 rounded-lg font-medium flex-shrink-0 ${r.is_premium ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}
                     >
                       {r.is_premium ? 'Premium' : 'Standard'}
                     </button>
                   </div>
                 ))}
-                {adminRecruiters.length === 0 && <p className="text-slate-500">Noch keine Recruiter-Profile.</p>}
+                {adminRecruiters.length === 0 && <p className="text-sm text-slate-500 p-3">Noch keine Recruiter-Profile.</p>}
               </div>
             </div>
 
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 tracking-tight">Kontaktanfragen</h2>
-              <div className="space-y-4">
+              <h2 className="text-lg font-semibold mb-3">Kontaktanfragen</h2>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
                 {adminRequests.map(r => (
-                  <div key={r.id} className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <div className="flex justify-between items-start gap-3">
-                      <div>
-                        <p className="font-semibold">{r.company_name}</p>
-                        <p className="text-sm text-slate-600 mt-0.5">an <span className="font-medium text-slate-900">{r.candidate_name}</span>{r.candidate_title ? ` · ${r.candidate_title}` : ''}</p>
+                  <div key={r.id} className="bg-white p-3 rounded-xl border border-slate-200 text-sm">
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{r.company_name}</p>
+                        <p className="text-xs text-slate-600 truncate">→ {r.candidate_name}{r.candidate_title ? ` · ${r.candidate_title}` : ''}</p>
                       </div>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{r.status}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{r.status}</span>
                     </div>
-                    <p className="mt-3 text-sm text-slate-700">{r.message || '(keine Nachricht)'}</p>
+                    {r.message && <p className="mt-1.5 text-xs text-slate-600 line-clamp-2">{r.message}</p>}
                     {r.status === 'approved' && (
-                      <div className="mt-3">
-                        <label className="text-xs text-slate-500">Prozess-Status</label>
-                        <select value={r.process_status || 'open'} onChange={e => updateProcessStatus(r.id, e.target.value)} className="w-full mt-1 p-2 border border-slate-200 rounded-lg text-sm">
-                          {PROCESS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
-                      </div>
+                      <select value={r.process_status || 'open'} onChange={e => updateProcessStatus(r.id, e.target.value)} className="w-full mt-2 p-1.5 border border-slate-200 rounded text-xs">
+                        {PROCESS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
                     )}
-                    {r.recruiter_phone && <p className="text-xs text-slate-500 mt-2">Telefon: {r.recruiter_phone}</p>}
-                    <p className="text-xs text-slate-400 mt-2">{new Date(r.created_at).toLocaleString()}</p>
-                    <div className="mt-4 flex gap-2 justify-end">
+                    <div className="mt-2 flex gap-1.5 justify-end">
                       {r.status !== 'approved' && (
-                        <button onClick={() => updateRequestStatus(r.id, 'approved')} className="bg-green-600 text-white text-sm px-4 py-2 rounded-xl font-medium">Freigeben</button>
+                        <button onClick={() => updateRequestStatus(r.id, 'approved')} className="bg-green-600 text-white text-xs px-2.5 py-1 rounded font-medium">Freigeben</button>
                       )}
                       {r.status !== 'rejected' && (
-                        <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="bg-red-600 text-white text-sm px-4 py-2 rounded-xl font-medium">Ablehnen</button>
+                        <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="bg-red-600 text-white text-xs px-2.5 py-1 rounded font-medium">Ablehnen</button>
                       )}
                     </div>
                   </div>
                 ))}
-                {adminRequests.length === 0 && <p className="text-slate-500">Keine Anfragen.</p>}
+                {adminRequests.length === 0 && <p className="text-sm text-slate-500">Keine Anfragen.</p>}
               </div>
             </div>
 
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 tracking-tight">Profil-Ansichten</h2>
-              <div className="space-y-2">
-                {adminViews.map(v => (
-                  <div key={v.id} className="bg-white p-4 rounded-xl border border-slate-100 text-sm flex justify-between">
+              <h2 className="text-lg font-semibold mb-3">Profil-Ansichten</h2>
+              <div className="space-y-1 max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-white">
+                {adminViews.slice(0, 20).map(v => (
+                  <div key={v.id} className="px-3 py-1.5 text-xs flex justify-between border-b border-slate-100 last:border-0">
                     <span>Ansicht {v.id.slice(0, 8)}</span>
                     <span className="text-slate-400">{new Date(v.viewed_at).toLocaleString()}</span>
                   </div>
                 ))}
-                {adminViews.length === 0 && <p className="text-slate-500">Noch keine Ansichten.</p>}
+                {adminViews.length === 0 && <p className="text-sm text-slate-500 p-3">Noch keine Ansichten.</p>}
               </div>
             </div>
           </div>
