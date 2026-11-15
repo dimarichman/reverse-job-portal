@@ -18,6 +18,7 @@ export default function Home() {
   const [msg, setMsg] = useState('')
   const [view, setView] = useState<'overview' | 'profile' | 'requests' | 'admin'>('overview')
   const [requests, setRequests] = useState<any[]>([])
+  const [candidateRequests, setCandidateRequests] = useState<any[]>([])
   const [adminRequests, setAdminRequests] = useState<any[]>([])
   const [adminViews, setAdminViews] = useState<any[]>([])
 
@@ -63,6 +64,7 @@ export default function Home() {
           await loadCandidates()
           if ((u.user_metadata?.role || 'candidate') === 'candidate') {
             await loadProfile(u.id)
+            await loadCandidateRequests(u.id)
           }
           if ((u.user_metadata?.role || 'candidate') === 'recruiter') {
             await loadMyRequests(u.id)
@@ -88,6 +90,7 @@ export default function Home() {
         await loadCandidates()
         if ((u.user_metadata?.role || 'candidate') === 'candidate') {
           await loadProfile(u.id)
+          await loadCandidateRequests(u.id)
         }
         if ((u.user_metadata?.role || 'candidate') === 'recruiter') {
           await loadMyRequests(u.id)
@@ -176,6 +179,17 @@ export default function Home() {
   async function loadMyRequests(userId: string) {
     const { data } = await supabase.from('contact_requests').select('*, candidates(full_name, title)').eq('recruiter_id', userId).order('created_at', { ascending: false })
     setRequests(data || [])
+  }
+
+  async function loadCandidateRequests(userId: string) {
+    // First get the candidate id
+    const { data: cand } = await supabase.from('candidates').select('id').eq('user_id', userId).single()
+    if (!cand) return
+    const { data } = await supabase.from('contact_requests')
+      .select('*, recruiter_profiles(company_name, logo_url, searching_for)')
+      .eq('candidate_id', cand.id)
+      .order('created_at', { ascending: false })
+    setCandidateRequests(data || [])
   }
 
   async function loadAdminRequests() {
@@ -340,6 +354,7 @@ export default function Home() {
     setProfile(null)
     setRecruiterProfile(null)
     setRequests([])
+    setCandidateRequests([])
     setAdminRequests([])
     setAdminViews([])
   }
@@ -397,6 +412,9 @@ export default function Home() {
       <nav className="flex gap-2 mb-8 flex-wrap">
         <button onClick={() => setView('overview')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'overview' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Übersicht</button>
         <button onClick={() => setView('profile')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{isRecruiter ? 'Firmenprofil' : 'Mein Profil'}</button>
+        {!isRecruiter && (
+          <button onClick={() => setView('requests')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Anfragen</button>
+        )}
         {isRecruiter && (
           <button onClick={() => setView('requests')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Meine Anfragen</button>
         )}
@@ -455,6 +473,33 @@ export default function Home() {
               ))}
               {adminViews.length === 0 && <p className="text-gray-500">Noch keine Ansichten.</p>}
             </div>
+          </div>
+        </div>
+      )}
+
+      {view === 'requests' && !isRecruiter && (
+        <div>
+          <h2 className="text-2xl font-semibold mb-6">Anfragen an dich</h2>
+          <div className="space-y-4">
+            {candidateRequests.map(r => (
+              <div key={r.id} className="bg-white p-5 rounded-2xl border shadow-sm">
+                <div className="flex gap-4">
+                  {r.recruiter_profiles?.logo_url && (
+                    <img src={r.recruiter_profiles.logo_url} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                  )}
+                  <div className="flex-1">
+                    <p className="font-semibold text-lg">{r.recruiter_profiles?.company_name || 'Unbekannte Firma'}</p>
+                    {r.recruiter_profiles?.searching_for && (
+                      <p className="text-sm text-gray-600 mt-0.5">Sucht: {r.recruiter_profiles.searching_for}</p>
+                    )}
+                    <p className="mt-2 text-sm text-gray-700">{r.message || '(keine Nachricht)'}</p>
+                    <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600 font-medium' : r.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}>{r.status}</span></p>
+                    <p className="text-xs text-gray-400 mt-1">{new Date(r.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {candidateRequests.length === 0 && <p className="text-gray-500">Noch keine Anfragen an dich.</p>}
           </div>
         </div>
       )}
