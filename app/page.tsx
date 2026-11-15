@@ -127,7 +127,7 @@ export default function Home() {
   }
 
   async function loadRecruiterProfile(userId: string) {
-    const { data } = await supabase.from('recruiter_profiles').select('*').eq('user_id', userId).single()
+    const { data } = await supabase.from('recruiter_profiles').select('*').eq('user_id', userId).maybeSingle()
     if (data) {
       setRecruiterProfile(data)
       setCompanyName(data.company_name || '')
@@ -193,60 +193,50 @@ export default function Home() {
   }
 
   async function loadMyRequests(userId: string) {
-    const { data } = await supabase.from('contact_requests').select('*, candidates(full_name, title)').eq('recruiter_id', userId).order('created_at', { ascending: false })
+    const { data } = await supabase.from('contact_requests').select('*').eq('recruiter_id', userId).order('created_at', { ascending: false })
     setRequests(data || [])
   }
 
   async function loadCandidateRequests(userId: string) {
-    const { data: cand } = await supabase.from('candidates').select('id').eq('user_id', userId).single()
+    const { data: cand } = await supabase.from('candidates').select('id').eq('user_id', userId).maybeSingle()
     if (!cand) return
-    const { data } = await supabase.from('contact_requests')
-      .select('*, recruiter_profiles(company_name, logo_url, searching_for)')
-      .eq('candidate_id', cand.id)
-      .order('created_at', { ascending: false })
+    const { data } = await supabase.from('contact_requests').select('*').eq('candidate_id', cand.id).order('created_at', { ascending: false })
     setCandidateRequests(data || [])
   }
 
   async function loadAdminRequests() {
-    const { data } = await supabase.from('contact_requests')
-      .select('*, candidates(full_name, title, location, experience_years), recruiter_profiles(company_name, logo_url, searching_for)')
-      .order('created_at', { ascending: false })
+    const { data } = await supabase.from('contact_requests').select('*').order('created_at', { ascending: false })
     setAdminRequests(data || [])
   }
 
   async function loadAdminViews() {
-    const { data } = await supabase.from('candidate_views')
-      .select('*, candidates(full_name, title)')
-      .order('viewed_at', { ascending: false })
-      .limit(100)
+    const { data } = await supabase.from('candidate_views').select('*').order('viewed_at', { ascending: false }).limit(100)
     setAdminViews(data || [])
   }
 
   async function updateRequestStatus(id: string, status: string) {
-    // Get request details first
-    const { data: req } = await supabase.from('contact_requests').select('*, candidates(user_id, full_name)').eq('id', id).single()
+    const { data: req } = await supabase.from('contact_requests').select('*').eq('id', id).single()
     await supabase.from('contact_requests').update({ status }).eq('id', id)
 
     if (req) {
       const title = status === 'approved' ? 'Anfrage freigegeben' : 'Anfrage abgelehnt'
-      const message = status === 'approved'
-        ? `Deine Anfrage an ${req.candidates?.full_name || 'den Kandidaten'} wurde freigegeben.`
-        : `Deine Anfrage an ${req.candidates?.full_name || 'den Kandidaten'} wurde abgelehnt.`
+      const message = status === 'approved' ? 'Deine Anfrage wurde freigegeben.' : 'Deine Anfrage wurde abgelehnt.'
 
-      // Notify recruiter
       await supabase.from('notifications').insert({
         user_id: req.recruiter_id,
         title,
         message
       })
 
-      // Notify candidate if approved
-      if (status === 'approved' && req.candidates?.user_id) {
-        await supabase.from('notifications').insert({
-          user_id: req.candidates.user_id,
-          title: 'Neue Kontaktanfrage freigegeben',
-          message: 'Eine Firma möchte Kontakt mit dir aufnehmen.'
-        })
+      if (status === 'approved') {
+        const { data: cand } = await supabase.from('candidates').select('user_id').eq('id', req.candidate_id).maybeSingle()
+        if (cand?.user_id) {
+          await supabase.from('notifications').insert({
+            user_id: cand.user_id,
+            title: 'Neue Kontaktanfrage freigegeben',
+            message: 'Eine Firma möchte Kontakt mit dir aufnehmen.'
+          })
+        }
       }
     }
 
@@ -255,7 +245,7 @@ export default function Home() {
   }
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase.from('candidates').select('*').eq('user_id', userId).single()
+    const { data } = await supabase.from('candidates').select('*').eq('user_id', userId).maybeSingle()
     if (data) {
       setProfile(data)
       setFullName(data.full_name || '')
@@ -496,25 +486,13 @@ export default function Home() {
             <div className="space-y-4">
               {adminRequests.map(r => (
                 <div key={r.id} className="bg-white p-5 rounded-2xl border shadow-sm">
-                  <div className="flex gap-4">
-                    {r.recruiter_profiles?.logo_url && (
-                      <img src={r.recruiter_profiles.logo_url} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
-                    )}
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-semibold text-lg">{r.candidates?.full_name || 'Unbekannt'}</p>
-                          <p className="text-sm text-gray-600">{r.candidates?.title || ''} · {r.candidates?.location || ''}{r.candidates?.experience_years ? ` · ${r.candidates.experience_years} Jahre` : ''}</p>
-                        </div>
-                        <span className={`text-xs px-2 py-1 rounded-full ${r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{r.status}</span>
-                      </div>
-                      <p className="mt-2 text-sm font-medium text-gray-800">{r.recruiter_profiles?.company_name || 'Unbekannte Firma'}</p>
-                      {r.recruiter_profiles?.searching_for && (
-                        <p className="text-xs text-gray-500 mt-0.5">Sucht: {r.recruiter_profiles.searching_for}</p>
-                      )}
-                      <p className="mt-2 text-sm text-gray-700">{r.message || '(keine Nachricht)'}</p>
-                      <p className="text-xs text-gray-400 mt-2">{new Date(r.created_at).toLocaleString()}</p>
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <p className="font-semibold">Anfrage {r.id.slice(0, 8)}</p>
+                      <span className={`text-xs px-2 py-1 rounded-full ${r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>{r.status}</span>
                     </div>
+                    <p className="mt-2 text-sm text-gray-700">{r.message || '(keine Nachricht)'}</p>
+                    <p className="text-xs text-gray-400 mt-2">{new Date(r.created_at).toLocaleString()}</p>
                   </div>
                   {r.status === 'pending' && (
                     <div className="mt-4 flex gap-2 justify-end">
@@ -533,7 +511,7 @@ export default function Home() {
             <div className="space-y-2">
               {adminViews.map(v => (
                 <div key={v.id} className="bg-white p-3 rounded-lg border text-sm flex justify-between">
-                  <span><span className="font-medium">{v.candidates?.full_name || 'Unbekannt'}</span> · {v.candidates?.title || ''}</span>
+                  <span>Ansicht {v.id.slice(0, 8)}</span>
                   <span className="text-gray-400">{new Date(v.viewed_at).toLocaleString()}</span>
                 </div>
               ))}
@@ -549,20 +527,10 @@ export default function Home() {
           <div className="space-y-4">
             {candidateRequests.map(r => (
               <div key={r.id} className="bg-white p-5 rounded-2xl border shadow-sm">
-                <div className="flex gap-4">
-                  {r.recruiter_profiles?.logo_url && (
-                    <img src={r.recruiter_profiles.logo_url} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
-                  )}
-                  <div className="flex-1">
-                    <p className="font-semibold text-lg">{r.recruiter_profiles?.company_name || 'Unbekannte Firma'}</p>
-                    {r.recruiter_profiles?.searching_for && (
-                      <p className="text-sm text-gray-600 mt-0.5">Sucht: {r.recruiter_profiles.searching_for}</p>
-                    )}
-                    <p className="mt-2 text-sm text-gray-700">{r.message || '(keine Nachricht)'}</p>
-                    <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600 font-medium' : r.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}>{r.status}</span></p>
-                    <p className="text-xs text-gray-400 mt-1">{new Date(r.created_at).toLocaleString()}</p>
-                  </div>
-                </div>
+                <p className="font-semibold">Anfrage {r.id.slice(0, 8)}</p>
+                <p className="mt-2 text-sm text-gray-700">{r.message || '(keine Nachricht)'}</p>
+                <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600 font-medium' : r.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}>{r.status}</span></p>
+                <p className="text-xs text-gray-400 mt-1">{new Date(r.created_at).toLocaleString()}</p>
               </div>
             ))}
             {candidateRequests.length === 0 && <p className="text-gray-500">Noch keine Anfragen an dich.</p>}
@@ -576,7 +544,7 @@ export default function Home() {
           <div className="space-y-3">
             {requests.map(r => (
               <div key={r.id} className="bg-white p-4 rounded-xl border">
-                <p className="font-medium">{r.candidates?.full_name || 'Unbekannt'} · {r.candidates?.title || ''}</p>
+                <p className="font-medium">Anfrage {r.id.slice(0, 8)}</p>
                 <p className="text-sm text-gray-600 mt-1">{r.message || '(keine Nachricht)'}</p>
                 <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600' : r.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}>{r.status}</span></p>
               </div>
