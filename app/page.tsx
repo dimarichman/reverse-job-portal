@@ -200,8 +200,15 @@ export default function Home() {
   async function loadCandidateRequests(userId: string) {
     const { data: cand } = await supabase.from('candidates').select('id').eq('user_id', userId).maybeSingle()
     if (!cand) return
-    const { data } = await supabase.from('contact_requests').select('*').eq('candidate_id', cand.id).order('created_at', { ascending: false })
-    setCandidateRequests(data || [])
+    const { data: reqs } = await supabase.from('contact_requests').select('*').eq('candidate_id', cand.id).order('created_at', { ascending: false })
+    if (!reqs) return
+
+    // Load company names
+    const enriched = await Promise.all(reqs.map(async (r) => {
+      const { data: rp } = await supabase.from('recruiter_profiles').select('company_name, logo_url').eq('user_id', r.recruiter_id).maybeSingle()
+      return { ...r, company_name: rp?.company_name || 'Unbekannte Firma', logo_url: rp?.logo_url }
+    }))
+    setCandidateRequests(enriched)
   }
 
   async function loadAdminRequests() {
@@ -527,10 +534,15 @@ export default function Home() {
           <div className="space-y-4">
             {candidateRequests.map(r => (
               <div key={r.id} className="bg-white p-5 rounded-2xl border shadow-sm">
-                <p className="font-semibold">Anfrage {r.id.slice(0, 8)}</p>
-                <p className="mt-2 text-sm text-gray-700">{r.message || '(keine Nachricht)'}</p>
-                <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600 font-medium' : r.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}>{r.status}</span></p>
-                <p className="text-xs text-gray-400 mt-1">{new Date(r.created_at).toLocaleString()}</p>
+                <div className="flex gap-3">
+                  {r.logo_url && <img src={r.logo_url} alt="" className="w-10 h-10 rounded object-cover" />}
+                  <div>
+                    <p className="font-semibold text-lg">{r.company_name || 'Unbekannte Firma'}</p>
+                    <p className="mt-2 text-sm text-gray-700">{r.message || '(keine Nachricht)'}</p>
+                    <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600 font-medium' : r.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}>{r.status}</span></p>
+                    <p className="text-xs text-gray-400 mt-1">{new Date(r.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
               </div>
             ))}
             {candidateRequests.length === 0 && <p className="text-gray-500">Noch keine Anfragen an dich.</p>}
