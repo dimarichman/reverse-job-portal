@@ -179,7 +179,9 @@ export default function Home() {
   }
 
   async function loadAdminRequests() {
-    const { data } = await supabase.from('contact_requests').select('*, candidates(full_name, title)').order('created_at', { ascending: false })
+    const { data } = await supabase.from('contact_requests')
+      .select('*, candidates(full_name, title), recruiter_profiles(company_name, logo_url)')
+      .order('created_at', { ascending: false })
     setAdminRequests(data || [])
   }
 
@@ -407,10 +409,16 @@ export default function Home() {
             <div className="space-y-3">
               {adminRequests.map(r => (
                 <div key={r.id} className="bg-white p-4 rounded-xl border flex justify-between items-start">
-                  <div>
-                    <p className="font-medium">{r.candidates?.full_name || 'Unbekannt'} · {r.candidates?.title || ''}</p>
-                    <p className="text-sm text-gray-600 mt-1">{r.message || '(keine Nachricht)'}</p>
-                    <p className="text-xs text-gray-400 mt-1">Status: {r.status} · {new Date(r.created_at).toLocaleString()}</p>
+                  <div className="flex gap-3">
+                    {r.recruiter_profiles?.logo_url && (
+                      <img src={r.recruiter_profiles.logo_url} alt="" className="w-10 h-10 rounded object-cover" />
+                    )}
+                    <div>
+                      <p className="font-medium">{r.candidates?.full_name || 'Unbekannt'} · {r.candidates?.title || ''}</p>
+                      <p className="text-sm text-gray-700 mt-0.5">{r.recruiter_profiles?.company_name || 'Unbekannte Firma'}</p>
+                      <p className="text-sm text-gray-600 mt-1">{r.message || '(keine Nachricht)'}</p>
+                      <p className="text-xs text-gray-400 mt-1">Status: {r.status} · {new Date(r.created_at).toLocaleString()}</p>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     {r.status === 'pending' && (
