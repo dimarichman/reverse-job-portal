@@ -203,7 +203,6 @@ export default function Home() {
     const { data: reqs } = await supabase.from('contact_requests').select('*').eq('candidate_id', cand.id).order('created_at', { ascending: false })
     if (!reqs) return
 
-    // Load company names
     const enriched = await Promise.all(reqs.map(async (r) => {
       const { data: rp } = await supabase.from('recruiter_profiles').select('company_name, logo_url').eq('user_id', r.recruiter_id).maybeSingle()
       return { ...r, company_name: rp?.company_name || 'Unbekannte Firma', logo_url: rp?.logo_url }
@@ -581,53 +580,64 @@ export default function Home() {
 
           <h2 className="text-2xl font-semibold mb-6 text-gray-900">Kandidaten ({filtered.length})</h2>
           <div className="space-y-4">
-            {filtered.map(c => (
-              <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow" onMouseEnter={() => logView(c.id)}>
-                <div className="p-6 flex gap-5">
-                  {c.photo_url ? (
-                    <img src={c.photo_url} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
-                  ) : (
-                    <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm flex-shrink-0">Foto</div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-semibold text-gray-900">{c.full_name || 'Unbekannt'}</h3>
-                    <p className="text-gray-600 mt-0.5">{c.title || 'Kein Titel'} · {c.location || 'Kein Ort'}</p>
-                    {c.experience_years != null && (
-                      <p className="text-sm text-gray-500 mt-1">{c.experience_years} Jahre Berufserfahrung</p>
-                    )}
-                    {c.salary_desired_k && (
-                      <p className="text-sm font-medium text-gray-800 mt-1">{c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>
-                    )}
-                    {c.bio && <p className="mt-3 text-gray-700 text-sm leading-relaxed line-clamp-2">{c.bio}</p>}
-                    {(c.skills?.length > 0 || c.industries?.length > 0) && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {c.skills?.map((s: string) => (
-                          <span key={s} className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">{s}</span>
-                        ))}
-                        {c.industries?.map((i: string) => (
-                          <span key={i} className="px-2.5 py-0.5 bg-green-100 text-green-800 text-xs rounded-full font-medium">{i}</span>
-                        ))}
+            {filtered.map(c => {
+              const isHidden = c.currently_employed && !isAdmin
+              return (
+                <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow relative" onMouseEnter={() => logView(c.id)}>
+                  {isHidden && (
+                    <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
+                      <div className="text-center px-6">
+                        <p className="font-semibold text-gray-800">Aktuell noch im Job</p>
+                        <p className="text-sm text-gray-500 mt-1">Premium-Feature – bald verfügbar</p>
                       </div>
+                    </div>
+                  )}
+                  <div className={`p-6 flex gap-5 ${isHidden ? 'filter blur-[2px]' : ''}`}>
+                    {c.photo_url ? (
+                      <img src={c.photo_url} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-20 h-20 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm flex-shrink-0">Foto</div>
                     )}
-                    <div className="mt-4 flex items-center gap-3">
-                      {c.cv_url && (
-                        <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
-                          Lebenslauf (PDF) →
-                        </a>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xl font-semibold text-gray-900">{isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}</h3>
+                      <p className="text-gray-600 mt-0.5">{c.title || 'Kein Titel'} · {c.location || 'Kein Ort'}</p>
+                      {c.experience_years != null && (
+                        <p className="text-sm text-gray-500 mt-1">{c.experience_years} Jahre Berufserfahrung</p>
                       )}
-                      {isRecruiter && (
-                        <button
-                          onClick={() => requestContact(c.id)}
-                          className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium"
-                        >
-                          Kandidat anfragen
-                        </button>
+                      {c.salary_desired_k && (
+                        <p className="text-sm font-medium text-gray-800 mt-1">{c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>
                       )}
+                      {c.bio && <p className="mt-3 text-gray-700 text-sm leading-relaxed line-clamp-2">{isHidden ? '••••••••••••••••••••' : c.bio}</p>}
+                      {(c.skills?.length > 0 || c.industries?.length > 0) && (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {c.skills?.map((s: string) => (
+                            <span key={s} className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">{s}</span>
+                          ))}
+                          {c.industries?.map((i: string) => (
+                            <span key={i} className="px-2.5 py-0.5 bg-green-100 text-green-800 text-xs rounded-full font-medium">{i}</span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mt-4 flex items-center gap-3">
+                        {c.cv_url && !isHidden && (
+                          <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
+                            Lebenslauf (PDF) →
+                          </a>
+                        )}
+                        {isRecruiter && !isHidden && (
+                          <button
+                            onClick={() => requestContact(c.id)}
+                            className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium"
+                          >
+                            Kandidat anfragen
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
             {filtered.length === 0 && <p className="text-gray-500">Keine Kandidaten gefunden.</p>}
           </div>
         </>
