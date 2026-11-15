@@ -303,6 +303,16 @@ export default function Home() {
                       <p className="text-sm font-medium text-gray-800 mt-1">{c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>
                     )}
                     {c.bio && <p className="mt-3 text-gray-700 text-sm leading-relaxed line-clamp-2">{c.bio}</p>}
+                    {(c.skills?.length > 0 || c.industries?.length > 0) && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {c.skills?.map((s: string) => (
+                          <span key={s} className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">{s}</span>
+                        ))}
+                        {c.industries?.map((i: string) => (
+                          <span key={i} className="px-2.5 py-0.5 bg-green-100 text-green-800 text-xs rounded-full font-medium">{i}</span>
+                        ))}
+                      </div>
+                    )}
                     {c.cv_url && (
                       <a href={c.cv_url} target="_blank" className="inline-flex items-center mt-3 text-blue-600 text-sm font-medium hover:underline">
                         Lebenslauf (PDF) →
