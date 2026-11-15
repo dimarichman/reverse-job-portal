@@ -44,22 +44,23 @@ export default function Home() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [uploadingCv, setUploadingCv] = useState(false)
 
-  const isAdmin = user?.email === 'dimarachmann@aol.com'
+  const isAdmin = user?.email?.toLowerCase() === 'dimarachmann@aol.com'
 
   useEffect(() => {
     const check = async () => {
       try {
         const { data } = await supabase.auth.getSession()
-        setUser(data.session?.user ?? null)
-        if (data.session) {
+        const u = data.session?.user ?? null
+        setUser(u)
+        if (u) {
           await loadCandidates()
-          if ((data.session.user.user_metadata?.role || 'candidate') === 'candidate') {
-            await loadProfile(data.session.user.id)
+          if ((u.user_metadata?.role || 'candidate') === 'candidate') {
+            await loadProfile(u.id)
           }
-          if ((data.session.user.user_metadata?.role || 'candidate') === 'recruiter') {
-            await loadMyRequests(data.session.user.id)
+          if ((u.user_metadata?.role || 'candidate') === 'recruiter') {
+            await loadMyRequests(u.id)
           }
-          if (data.session.user.email === 'dimarachmann@aol.com') {
+          if (u.email?.toLowerCase() === 'dimarachmann@aol.com') {
             await loadAdminRequests()
             await loadAdminViews()
           }
@@ -73,16 +74,17 @@ export default function Home() {
     check()
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_e, session) => {
-      setUser(session?.user ?? null)
-      if (session) {
+      const u = session?.user ?? null
+      setUser(u)
+      if (u) {
         await loadCandidates()
-        if ((session.user.user_metadata?.role || 'candidate') === 'candidate') {
-          await loadProfile(session.user.id)
+        if ((u.user_metadata?.role || 'candidate') === 'candidate') {
+          await loadProfile(u.id)
         }
-        if ((session.user.user_metadata?.role || 'candidate') === 'recruiter') {
-          await loadMyRequests(session.user.id)
+        if ((u.user_metadata?.role || 'candidate') === 'recruiter') {
+          await loadMyRequests(u.id)
         }
-        if (session.user.email === 'dimarachmann@aol.com') {
+        if (u.email?.toLowerCase() === 'dimarachmann@aol.com') {
           await loadAdminRequests()
           await loadAdminViews()
         }
