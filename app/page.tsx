@@ -658,28 +658,62 @@ export default function Home() {
                             </div>
                             {c.salary_desired_k && (
                               <div className="text-right flex-shrink-0">
-                                <p className="text-base sm:text-lg font-semibold text-slate-900">{c.salary_desired_k}k €</p>
+                                <p className="text-xs text-slate-500 uppercase tracking-wide">Wunschgehalt</p>
+                                <p className="text-lg sm:text-xl font-semibold text-slate-900">{c.salary_desired_k}k €</p>
                                 {c.salary_negotiable && <p className="text-xs text-slate-500">verhandelbar</p>}
                               </div>
                             )}
                           </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-slate-500">
-                            {c.location && <span>{c.location}</span>}
-                            {c.experience_years != null && <span>{c.experience_years} Jahre</span>}
-                            {c.available_from && <span>ab {new Date(c.available_from).toLocaleDateString('de-DE')}</span>}
+
+                          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                            {c.location && (
+                              <div>
+                                <span className="text-slate-400 text-xs">Ort</span>
+                                <p className="text-slate-700">{c.location}</p>
+                              </div>
+                            )}
+                            {c.experience_years != null && (
+                              <div>
+                                <span className="text-slate-400 text-xs">Berufserfahrung</span>
+                                <p className="text-slate-700">{c.experience_years} Jahre</p>
+                              </div>
+                            )}
+                            {c.available_from && (
+                              <div>
+                                <span className="text-slate-400 text-xs">Verfügbar ab</span>
+                                <p className="text-slate-700">{new Date(c.available_from).toLocaleDateString('de-DE')}</p>
+                              </div>
+                            )}
                           </div>
-                          {c.bio && <p className="mt-3 text-slate-600 text-sm leading-relaxed line-clamp-2">{isHidden ? '••••••••••••••••••••' : c.bio}</p>}
+
+                          {c.bio && <p className="mt-4 text-slate-600 text-sm leading-relaxed line-clamp-2">{isHidden ? '••••••••••••••••••••' : c.bio}</p>}
+
                           {(c.skills?.length > 0 || c.industries?.length > 0) && (
-                            <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5">
-                              {c.skills?.slice(0, 4).map((s: string) => (
-                                <span key={s} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">{s}</span>
-                              ))}
-                              {c.industries?.slice(0, 3).map((i: string) => (
-                                <span key={i} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium">{i}</span>
-                              ))}
+                            <div className="mt-4">
+                              {c.skills?.length > 0 && (
+                                <div className="mb-2">
+                                  <span className="text-slate-400 text-xs">Skills</span>
+                                  <div className="flex flex-wrap gap-1.5 mt-1">
+                                    {c.skills.slice(0, 5).map((s: string) => (
+                                      <span key={s} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">{s}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {c.industries?.length > 0 && (
+                                <div>
+                                  <span className="text-slate-400 text-xs">Branchen</span>
+                                  <div className="flex flex-wrap gap-1.5 mt-1">
+                                    {c.industries.slice(0, 4).map((i: string) => (
+                                      <span key={i} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium">{i}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
-                          <div className="mt-4 sm:mt-5 flex items-center gap-3 pt-4 border-t border-slate-100">
+
+                          <div className="mt-5 flex items-center gap-3 pt-4 border-t border-slate-100">
                             {c.cv_url && !isHidden && (
                               <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
                                 Lebenslauf →
