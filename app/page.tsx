@@ -13,6 +13,7 @@ export default function Home() {
   const [error, setError] = useState('')
   const [isLogin, setIsLogin] = useState(true)
   const [profile, setProfile] = useState<any>(null)
+  const [recruiterProfile, setRecruiterProfile] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
   const [view, setView] = useState<'overview' | 'profile' | 'requests' | 'admin'>('overview')
@@ -44,6 +45,12 @@ export default function Home() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [uploadingCv, setUploadingCv] = useState(false)
 
+  // Recruiter fields
+  const [companyName, setCompanyName] = useState('')
+  const [searchingFor, setSearchingFor] = useState('')
+  const [logoUrl, setLogoUrl] = useState('')
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+
   const isAdmin = user?.email?.toLowerCase() === 'dimarachmann@aol.com'
 
   useEffect(() => {
@@ -59,6 +66,7 @@ export default function Home() {
           }
           if ((u.user_metadata?.role || 'candidate') === 'recruiter') {
             await loadMyRequests(u.id)
+            await loadRecruiterProfile(u.id)
           }
           if (u.email?.toLowerCase() === 'dimarachmann@aol.com') {
             await loadAdminRequests()
@@ -83,6 +91,7 @@ export default function Home() {
         }
         if ((u.user_metadata?.role || 'candidate') === 'recruiter') {
           await loadMyRequests(u.id)
+          await loadRecruiterProfile(u.id)
         }
         if (u.email?.toLowerCase() === 'dimarachmann@aol.com') {
           await loadAdminRequests()
@@ -98,6 +107,62 @@ export default function Home() {
     setCandidates(data || [])
   }
 
+  async function loadRecruiterProfile(userId: string) {
+    const { data } = await supabase.from('recruiter_profiles').select('*').eq('user_id', userId).single()
+    if (data) {
+      setRecruiterProfile(data)
+      setCompanyName(data.company_name || '')
+      setSearchingFor(data.searching_for || '')
+      setLogoUrl(data.logo_url || '')
+    }
+  }
+
+  async function saveRecruiterProfile() {
+    if (!user) return
+    setSaving(true)
+    setMsg('')
+    const payload = {
+      user_id: user.id,
+      company_name: companyName || null,
+      searching_for: searchingFor || null,
+      logo_url: logoUrl || null,
+      updated_at: new Date().toISOString(),
+    }
+    try {
+      if (recruiterProfile) {
+        await supabase.from('recruiter_profiles').update(payload).eq('id', recruiterProfile.id)
+      } else {
+        const { data } = await supabase.from('recruiter_profiles').insert(payload).select().single()
+        setRecruiterProfile(data)
+      }
+      setMsg('Firmenprofil gespeichert!')
+    } catch (e: any) {
+      setMsg('Fehler: ' + e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function uploadLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    setUploadingLogo(true)
+    setMsg('')
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `logos/${user.id}-${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('profiles').upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data } = supabase.storage.from('profiles').getPublicUrl(path)
+      setLogoUrl(data.publicUrl)
+      setMsg('Logo hochgeladen')
+    } catch (err: any) {
+      setMsg('Logo-Fehler: ' + err.message)
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
   async function logView(candidateId: string) {
     if (!user || (user.user_metadata?.role || 'candidate') !== 'recruiter') return
     try {
@@ -105,9 +170,7 @@ export default function Home() {
         recruiter_id: user.id,
         candidate_id: candidateId
       })
-    } catch {
-      // ignore logging errors
-    }
+    } catch {}
   }
 
   async function loadMyRequests(userId: string) {
@@ -270,6 +333,7 @@ export default function Home() {
     setUser(null)
     setCandidates([])
     setProfile(null)
+    setRecruiterProfile(null)
     setRequests([])
     setAdminRequests([])
     setAdminViews([])
@@ -327,9 +391,7 @@ export default function Home() {
 
       <nav className="flex gap-2 mb-8 flex-wrap">
         <button onClick={() => setView('overview')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'overview' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Übersicht</button>
-        {!isRecruiter && (
-          <button onClick={() => setView('profile')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Mein Profil</button>
-        )}
+        <button onClick={() => setView('profile')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{isRecruiter ? 'Firmenprofil' : 'Mein Profil'}</button>
         {isRecruiter && (
           <button onClick={() => setView('requests')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Meine Anfragen</button>
         )}
@@ -460,6 +522,40 @@ export default function Home() {
             {filtered.length === 0 && <p className="text-gray-500">Keine Kandidaten gefunden.</p>}
           </div>
         </>
+      )}
+
+      {view === 'profile' && isRecruiter && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-2xl">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-900">Firmenprofil</h2>
+          {msg && <div className={`p-3 rounded-lg mb-6 text-sm ${msg.includes('Fehler') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
+
+          <div className="flex items-center gap-6 mb-8">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="w-28 h-28 rounded-2xl object-cover border border-gray-200" />
+            ) : (
+              <div className="w-28 h-28 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400">Logo</div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Firmenlogo</label>
+              <input type="file" accept="image/*" onChange={uploadLogo} disabled={uploadingLogo} className="text-sm text-gray-600" />
+              {uploadingLogo && <p className="text-xs text-gray-500 mt-1">Lade hoch...</p>}
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Firmenname</label>
+              <input value={companyName} onChange={e => setCompanyName(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" placeholder="z.B. allO Technology GmbH" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Wen sucht ihr aktuell?</label>
+              <textarea value={searchingFor} onChange={e => setSearchingFor(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" rows={4} placeholder="z.B. Senior Sales Manager für DACH, Full-Stack Entwickler..." />
+            </div>
+            <button onClick={saveRecruiterProfile} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 transition">
+              {saving ? 'Speichere...' : 'Firmenprofil speichern'}
+            </button>
+          </div>
+        </div>
       )}
 
       {view === 'profile' && !isRecruiter && (
