@@ -17,6 +17,11 @@ export default function Home() {
   const [msg, setMsg] = useState('')
   const [view, setView] = useState<'overview' | 'profile'>('overview')
 
+  const [filterExp, setFilterExp] = useState('')
+  const [filterSalary, setFilterSalary] = useState('')
+  const [filterLocation, setFilterLocation] = useState('')
+  const [filterSkill, setFilterSkill] = useState('')
+
   const [fullName, setFullName] = useState('')
   const [title, setTitle] = useState('')
   const [location, setLocation] = useState('')
@@ -66,7 +71,7 @@ export default function Home() {
   }, [])
 
   async function loadCandidates() {
-    const { data } = await supabase.from('candidates').select('*').order('created_at', { ascending: false }).limit(30)
+    const { data } = await supabase.from('candidates').select('*').order('created_at', { ascending: false }).limit(50)
     setCandidates(data || [])
   }
 
@@ -89,6 +94,19 @@ export default function Home() {
       setPhotoUrl(data.photo_url || '')
       setCvUrl(data.cv_url || '')
     }
+  }
+
+  async function requestContact(candidateId: string) {
+    if (!user) return
+    const message = prompt('Kurze Nachricht (optional):') || ''
+    const { error } = await supabase.from('contact_requests').insert({
+      recruiter_id: user.id,
+      candidate_id: candidateId,
+      message,
+      status: 'pending'
+    })
+    if (error) alert('Fehler: ' + error.message)
+    else alert('Anfrage gesendet. Admin prüft sie.')
   }
 
   async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -224,13 +242,21 @@ export default function Home() {
     setProfile(null)
   }
 
+  const filtered = candidates.filter(c => {
+    if (filterExp && (c.experience_years || 0) < parseInt(filterExp)) return false
+    if (filterSalary && (c.salary_desired_k || 999) > parseInt(filterSalary)) return false
+    if (filterLocation && !c.location?.toLowerCase().includes(filterLocation.toLowerCase())) return false
+    if (filterSkill && !c.skills?.some((s: string) => s.toLowerCase().includes(filterSkill.toLowerCase()))) return false
+    return true
+  })
+
   if (loading) return <div className="p-8 text-center text-gray-500">Lade...</div>
 
   if (!user) {
     return (
       <div className="max-w-md mx-auto mt-16 p-8 bg-white rounded-2xl shadow-lg">
         <h1 className="text-3xl font-bold text-blue-600 mb-2 text-center">Job Heroes</h1>
-        <p className="text-center text-gray-500 mb-6">Umgekehrtes Job-Portal</p>
+        <p className="text-center text-gray-500 mb-6">Firmen suchen dich – nicht umgekehrt</p>
         {error && <div className="bg-red-50 text-red-700 p-3 rounded-lg mb-4 text-sm">{error}</div>}
         <form onSubmit={handleAuth} className="space-y-4">
           <input type="email" placeholder="E-Mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-gray-200 rounded-lg" required />
@@ -283,9 +309,18 @@ export default function Home() {
 
       {view === 'overview' || isRecruiter ? (
         <>
-          <h2 className="text-2xl font-semibold mb-6 text-gray-900">Kandidaten</h2>
+          <div className="mb-6 bg-white rounded-2xl border border-gray-100 p-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <input placeholder="Min. Erfahrung (Jahre)" value={filterExp} onChange={e => setFilterExp(e.target.value)} className="p-2 border rounded-lg text-sm" />
+              <input placeholder="Max. Gehalt (k€)" value={filterSalary} onChange={e => setFilterSalary(e.target.value)} className="p-2 border rounded-lg text-sm" />
+              <input placeholder="Ort" value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="p-2 border rounded-lg text-sm" />
+              <input placeholder="Skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} className="p-2 border rounded-lg text-sm" />
+            </div>
+          </div>
+
+          <h2 className="text-2xl font-semibold mb-6 text-gray-900">Kandidaten ({filtered.length})</h2>
           <div className="space-y-4">
-            {candidates.map(c => (
+            {filtered.map(c => (
               <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
                 <div className="p-6 flex gap-5">
                   {c.photo_url ? (
@@ -313,16 +348,26 @@ export default function Home() {
                         ))}
                       </div>
                     )}
-                    {c.cv_url && (
-                      <a href={c.cv_url} target="_blank" className="inline-flex items-center mt-3 text-blue-600 text-sm font-medium hover:underline">
-                        Lebenslauf (PDF) →
-                      </a>
-                    )}
+                    <div className="mt-4 flex items-center gap-3">
+                      {c.cv_url && (
+                        <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline">
+                          Lebenslauf (PDF) →
+                        </a>
+                      )}
+                      {isRecruiter && (
+                        <button
+                          onClick={() => requestContact(c.id)}
+                          className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg font-medium"
+                        >
+                          Kandidat anfragen
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
-            {candidates.length === 0 && <p className="text-gray-500">Keine Kandidaten gefunden.</p>}
+            {filtered.length === 0 && <p className="text-gray-500">Keine Kandidaten gefunden.</p>}
           </div>
         </>
       ) : (
