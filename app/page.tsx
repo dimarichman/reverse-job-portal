@@ -12,6 +12,7 @@ export default function Home() {
   const [candidates, setCandidates] = useState<any[]>([])
   const [error, setError] = useState('')
   const [isLogin, setIsLogin] = useState(true)
+  const [showAuth, setShowAuth] = useState(false)
   const [profile, setProfile] = useState<any>(null)
   const [recruiterProfile, setRecruiterProfile] = useState<any>(null)
   const [saving, setSaving] = useState(false)
@@ -397,6 +398,7 @@ export default function Home() {
     setAdminViews([])
     setNotifications([])
     setUnreadCount(0)
+    setShowAuth(false)
   }
 
   const filtered = candidates.filter(c => {
@@ -413,28 +415,76 @@ export default function Home() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-gradient-to-b from-slate-50 to-white">
-        <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-6 sm:p-10">
-          <h1 className="text-3xl sm:text-4xl font-bold text-blue-600 mb-1 text-center tracking-tight">Job Heroes</h1>
-          <p className="text-center text-slate-500 mb-6 sm:mb-8 text-sm sm:text-base">Firmen suchen dich – nicht umgekehrt</p>
-          {error && <div className="bg-red-50 text-red-700 p-3 rounded-xl mb-6 text-sm">{error}</div>}
-          <form onSubmit={handleAuth} className="space-y-4">
-            <input type="email" placeholder="E-Mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" required />
-            <input type="password" placeholder="Passwort" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" required />
-            {!isLogin && (
-              <select value={role} onChange={e => setRole(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none">
-                <option value="candidate">Ich bin Kandidat</option>
-                <option value="recruiter">Ich bin Arbeitgeber / Recruiter</option>
-              </select>
-            )}
-            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-xl font-medium transition">
-              {isLogin ? 'Anmelden' : 'Registrieren'}
-            </button>
-          </form>
-          <button onClick={() => setIsLogin(!isLogin)} className="w-full mt-6 text-sm text-slate-500 hover:text-slate-700">
-            {isLogin ? 'Noch kein Konto? Registrieren' : 'Schon ein Konto? Anmelden'}
-          </button>
-        </div>
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+        {/* Header */}
+        <header className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-blue-600 tracking-tight">Job Heroes</h1>
+          <button onClick={() => setShowAuth(true)} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium">Anmelden</button>
+        </header>
+
+        {/* Hero */}
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-12 pb-16 text-center">
+          <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight leading-tight">Firmen suchen dich.<br />Nicht umgekehrt.</h2>
+          <p className="mt-5 text-lg text-slate-600 max-w-xl mx-auto">Das umgekehrte Job-Portal. Du erstellst dein Profil – Recruiter kommen auf dich zu.</p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+            <button onClick={() => { setShowAuth(true); setIsLogin(false); setRole('candidate') }} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition">Als Kandidat starten</button>
+            <button onClick={() => { setShowAuth(true); setIsLogin(false); setRole('recruiter') }} className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 px-6 py-3 rounded-xl font-medium transition">Als Recruiter starten</button>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-20">
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              </div>
+              <h3 className="font-semibold text-lg">Für Kandidaten</h3>
+              <p className="text-sm text-slate-600 mt-2">Profil anlegen, CV hochladen, und auf Anfragen warten. Kein Bewerbungsstress.</p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              </div>
+              <h3 className="font-semibold text-lg">Für Recruiter</h3>
+              <p className="text-sm text-slate-600 mt-2">Kandidaten durchsuchen, filtern und direkt anfragen. Du entscheidest, wen du ansprichst.</p>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-slate-100">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-4">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+              </div>
+              <h3 className="font-semibold text-lg">Privat & sicher</h3>
+              <p className="text-sm text-slate-600 mt-2">Wer noch im Job ist, bleibt verdeckt. Du bestimmst, wann du sichtbar bist.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Auth Modal */}
+        {showAuth && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowAuth(false)}>
+            <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8" onClick={e => e.stopPropagation()}>
+              <h2 className="text-2xl font-bold text-slate-900 mb-1">{isLogin ? 'Anmelden' : 'Registrieren'}</h2>
+              <p className="text-sm text-slate-500 mb-6">Job Heroes</p>
+              {error && <div className="bg-red-50 text-red-700 p-3 rounded-xl mb-4 text-sm">{error}</div>}
+              <form onSubmit={handleAuth} className="space-y-4">
+                <input type="email" placeholder="E-Mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                <input type="password" placeholder="Passwort" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                {!isLogin && (
+                  <select value={role} onChange={e => setRole(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none">
+                    <option value="candidate">Ich bin Kandidat</option>
+                    <option value="recruiter">Ich bin Arbeitgeber / Recruiter</option>
+                  </select>
+                )}
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-xl font-medium transition">
+                  {isLogin ? 'Anmelden' : 'Registrieren'}
+                </button>
+              </form>
+              <button onClick={() => setIsLogin(!isLogin)} className="w-full mt-4 text-sm text-slate-500 hover:text-slate-700">
+                {isLogin ? 'Noch kein Konto? Registrieren' : 'Schon ein Konto? Anmelden'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
