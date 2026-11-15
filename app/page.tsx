@@ -100,10 +100,14 @@ export default function Home() {
 
   async function logView(candidateId: string) {
     if (!user || (user.user_metadata?.role || 'candidate') !== 'recruiter') return
-    await supabase.from('candidate_views').insert({
-      recruiter_id: user.id,
-      candidate_id: candidateId
-    }).catch(() => {})
+    try {
+      await supabase.from('candidate_views').insert({
+        recruiter_id: user.id,
+        candidate_id: candidateId
+      })
+    } catch {
+      // ignore logging errors
+    }
   }
 
   async function loadMyRequests(userId: string) {
@@ -150,7 +154,7 @@ export default function Home() {
   async function requestContact(candidateId: string) {
     if (!user) return
     await logView(candidateId)
-    const message = prompt('Kurze Nachricht (optional):') || ''
+    const message = window.prompt('Kurze Nachricht (optional):') || ''
     const { error } = await supabase.from('contact_requests').insert({
       recruiter_id: user.id,
       candidate_id: candidateId,
