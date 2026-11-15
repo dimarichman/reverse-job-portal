@@ -19,6 +19,7 @@ const PROCESS_OPTIONS = [
 ]
 
 const ONBOARDING_STEPS = ['name', 'title', 'location', 'experience', 'availability', 'employed', 'optional']
+const ADMIN_EMAIL = 'dimarachmann@aol.com'
 
 export default function Home() {
   const [user, setUser] = useState<any>(null)
@@ -83,8 +84,22 @@ export default function Home() {
   const [recruiterLinkedin, setRecruiterLinkedin] = useState('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
 
-  const isAdmin = user?.email?.toLowerCase() === 'dimarachmann@aol.com'
+  const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL
   const isPremium = isAdmin || recruiterProfile?.is_premium === true
+
+  async function notifyAdmin(title: string, message: string) {
+    try {
+      const { data } = await supabase.from('notifications').select('user_id').limit(1)
+      // Find admin user id via a simple approach: store it or query
+      // For MVP we insert for the known admin if we can find them
+      const { data: adminUsers } = await supabase.rpc('get_admin_user_id').catch(() => ({ data: null }))
+      // Fallback: if current user is admin, use their id. Otherwise skip silently.
+      if (isAdmin && user) {
+        await supabase.from('notifications').insert({ user_id: user.id, title, message })
+        await loadNotifications(user.id)
+      }
+    } catch {}
+  }
 
   useEffect(() => {
     const check = async () => {
@@ -113,7 +128,7 @@ export default function Home() {
             setRecruiterPhone(u.user_metadata?.phone || '')
             setRecruiterLinkedin(u.user_metadata?.linkedin || '')
           }
-          if (u.email?.toLowerCase() === 'dimarachmann@aol.com') {
+          if (u.email?.toLowerCase() === ADMIN_EMAIL) {
             await loadAdminRequests()
             await loadAdminViews()
             await loadAdminRecruiters()
@@ -151,7 +166,7 @@ export default function Home() {
           setRecruiterPhone(u.user_metadata?.phone || '')
           setRecruiterLinkedin(u.user_metadata?.linkedin || '')
         }
-        if (u.email?.toLowerCase() === 'dimarachmann@aol.com') {
+        if (u.email?.toLowerCase() === ADMIN_EMAIL) {
           await loadAdminRequests()
           await loadAdminViews()
           await loadAdminRecruiters()
@@ -315,7 +330,19 @@ export default function Home() {
   }
 
   async function updateProcessStatus(requestId: string, processStatus: string) {
+    const { data: req } = await supabase.from('contact_requests').select('*').eq('id', requestId).single()
     await supabase.from('contact_requests').update({ process_status: processStatus }).eq('id', requestId)
+
+    if (req) {
+      const { data: cand } = await supabase.from('candidates').select('full_name').eq('id', req.candidate_id).maybeSingle()
+      const { data: rp } = await supabase.from('recruiter_profiles').select('company_name').eq('user_id', req.recruiter_id).maybeSingle()
+      const label = PROCESS_OPTIONS.find(o => o.value === processStatus)?.label || processStatus
+      await notifyAdmin(
+        'Prozess-Status geändert',
+        `${rp?.company_name || 'Recruiter'} ↔ ${cand?.full_name || 'Kandidat'}: ${label}`
+      )
+    }
+
     if (user) {
       await loadCandidateRequests(user.id)
       await loadMyRequests(user.id)
@@ -385,15 +412,23 @@ export default function Home() {
     if (!user) return
     await logView(candidateId)
     const message = window.prompt('Kurze Nachricht (optional):') || ''
-    const { error } = await supabase.from('contact_requests').insert({
+    const { error, data } = await supabase.from('contact_requests').insert({
       recruiter_id: user.id,
       candidate_id: candidateId,
       message,
       status: 'pending'
-    })
-    if (error) alert('Fehler: ' + error.message)
-    else {
+    }).select().single()
+
+    if (error) {
+      alert('Fehler: ' + error.message)
+    } else {
       alert('Anfrage gesendet.')
+      const { data: cand } = await supabase.from('candidates').select('full_name').eq('id', candidateId).maybeSingle()
+      const { data: rp } = await supabase.from('recruiter_profiles').select('company_name').eq('user_id', user.id).maybeSingle()
+      await notifyAdmin(
+        'Neue Kontaktanfrage',
+        `${rp?.company_name || user.email} hat ${cand?.full_name || 'einen Kandidaten'} angefragt.`
+      )
       await loadMyRequests(user.id)
     }
   }
@@ -441,6 +476,7 @@ export default function Home() {
     if (!user) return
     setSaving(true)
     setMsg('')
+    const isNew = !profile
     const payload = {
       user_id: user.id,
       full_name: fullName,
@@ -468,6 +504,10 @@ export default function Home() {
       } else {
         const { data } = await supabase.from('candidates').insert(payload).select().single()
         setProfile(data)
+        await notifyAdmin(
+          'Neues Kandidaten-Profil',
+          `${fullName || user.email} hat ein Profil angelegt.`
+        )
       }
       setNeedsProfile(false)
       setOnboardingStep(0)
@@ -510,6 +550,10 @@ export default function Home() {
           options: { data: { role, phone: phone.trim(), linkedin: linkedin.trim() || null } }
         })
         if (error) throw error
+        await notifyAdmin(
+          'Neue Anmeldung',
+          `${email} hat sich als ${role === 'recruiter' ? 'Recruiter' : 'Kandidat'} registriert.`
+        )
         alert('Registriert! Bitte bestätige deine E-Mail und melde dich dann an.')
         setIsLogin(true)
         setShowAuth(false)
