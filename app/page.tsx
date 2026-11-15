@@ -3,10 +3,20 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+const AVAILABILITY_OPTIONS = [
+  { value: 'sofort', label: 'Sofort' },
+  { value: '2_wochen', label: 'Innerhalb von 2 Wochen' },
+  { value: '1_monat', label: 'Innerhalb von 1 Monat' },
+  { value: '3_monate', label: 'Innerhalb von 3 Monaten' },
+  { value: 'datum', label: 'Ab bestimmtem Datum' },
+]
+
 export default function Home() {
   const [user, setUser] = useState<any>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
+  const [linkedin, setLinkedin] = useState('')
   const [role, setRole] = useState('candidate')
   const [loading, setLoading] = useState(true)
   const [candidates, setCandidates] = useState<any[]>([])
@@ -36,6 +46,7 @@ export default function Home() {
   const [title, setTitle] = useState('')
   const [location, setLocation] = useState('')
   const [experience, setExperience] = useState('')
+  const [availability, setAvailability] = useState('sofort')
   const [availableFrom, setAvailableFrom] = useState('')
   const [salary, setSalary] = useState('')
   const [negotiable, setNegotiable] = useState(true)
@@ -46,6 +57,8 @@ export default function Home() {
   const [industries, setIndustries] = useState('')
   const [photoUrl, setPhotoUrl] = useState('')
   const [cvUrl, setCvUrl] = useState('')
+  const [candidatePhone, setCandidatePhone] = useState('')
+  const [candidateLinkedin, setCandidateLinkedin] = useState('')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [uploadingCv, setUploadingCv] = useState(false)
 
@@ -53,6 +66,8 @@ export default function Home() {
   const [companyName, setCompanyName] = useState('')
   const [searchingFor, setSearchingFor] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
+  const [recruiterPhone, setRecruiterPhone] = useState('')
+  const [recruiterLinkedin, setRecruiterLinkedin] = useState('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
 
   const isAdmin = user?.email?.toLowerCase() === 'dimarachmann@aol.com'
@@ -135,6 +150,8 @@ export default function Home() {
       setCompanyName(data.company_name || '')
       setSearchingFor(data.searching_for || '')
       setLogoUrl(data.logo_url || '')
+      setRecruiterPhone(data.phone || '')
+      setRecruiterLinkedin(data.linkedin || '')
     }
   }
 
@@ -147,6 +164,8 @@ export default function Home() {
       company_name: companyName || null,
       searching_for: searchingFor || null,
       logo_url: logoUrl || null,
+      phone: recruiterPhone || null,
+      linkedin: recruiterLinkedin || null,
       updated_at: new Date().toISOString(),
     }
     try {
@@ -260,6 +279,7 @@ export default function Home() {
       setTitle(data.title || '')
       setLocation(data.location || '')
       setExperience(data.experience_years?.toString() || '')
+      setAvailability(data.availability || 'sofort')
       setAvailableFrom(data.available_from || '')
       setSalary(data.salary_desired_k?.toString() || '')
       setNegotiable(data.salary_negotiable !== false)
@@ -270,6 +290,8 @@ export default function Home() {
       setIndustries((data.industries || []).join(', '))
       setPhotoUrl(data.photo_url || '')
       setCvUrl(data.cv_url || '')
+      setCandidatePhone(data.phone || '')
+      setCandidateLinkedin(data.linkedin || '')
     }
   }
 
@@ -339,7 +361,8 @@ export default function Home() {
       title: title || null,
       location: location || null,
       experience_years: experience ? parseInt(experience) : null,
-      available_from: availableFrom || null,
+      availability: availability || null,
+      available_from: availability === 'datum' ? (availableFrom || null) : null,
       salary_desired_k: salary ? parseInt(salary) : null,
       salary_negotiable: negotiable,
       current_company: currentCompany || null,
@@ -349,6 +372,8 @@ export default function Home() {
       industries: industries.split(',').map(s => s.trim()).filter(Boolean),
       photo_url: photoUrl || null,
       cv_url: cvUrl || null,
+      phone: candidatePhone || null,
+      linkedin: candidateLinkedin || null,
     }
     try {
       if (profile) {
@@ -373,10 +398,14 @@ export default function Home() {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
       } else {
+        if (!phone.trim()) {
+          setError('Telefonnummer ist erforderlich')
+          return
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { role } }
+          options: { data: { role, phone: phone.trim(), linkedin: linkedin.trim() || null } }
         })
         if (error) throw error
         alert('Registriert! Du kannst dich jetzt anmelden.')
@@ -400,6 +429,16 @@ export default function Home() {
     setNotifications([])
     setUnreadCount(0)
     setShowAuth(false)
+  }
+
+  function formatAvailability(c: any) {
+    if (c.availability === 'sofort') return 'Sofort'
+    if (c.availability === '2_wochen') return 'Innerhalb von 2 Wochen'
+    if (c.availability === '1_monat') return 'Innerhalb von 1 Monat'
+    if (c.availability === '3_monate') return 'Innerhalb von 3 Monaten'
+    if (c.availability === 'datum' && c.available_from) return new Date(c.available_from).toLocaleDateString('de-DE')
+    if (c.available_from) return new Date(c.available_from).toLocaleDateString('de-DE')
+    return null
   }
 
   const filtered = candidates.filter(c => {
@@ -467,10 +506,14 @@ export default function Home() {
                 <input type="email" placeholder="E-Mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
                 <input type="password" placeholder="Passwort" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
                 {!isLogin && (
-                  <select value={role} onChange={e => setRole(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none">
-                    <option value="candidate">Ich bin Kandidat</option>
-                    <option value="recruiter">Ich bin Arbeitgeber / Recruiter</option>
-                  </select>
+                  <>
+                    <input type="tel" placeholder="Telefonnummer *" value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
+                    <input type="url" placeholder="LinkedIn (optional)" value={linkedin} onChange={e => setLinkedin(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                    <select value={role} onChange={e => setRole(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none">
+                      <option value="candidate">Ich bin Kandidat</option>
+                      <option value="recruiter">Ich bin Arbeitgeber / Recruiter</option>
+                    </select>
+                  </>
                 )}
                 <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-xl font-medium transition">
                   {isLogin ? 'Anmelden' : 'Registrieren'}
@@ -630,6 +673,7 @@ export default function Home() {
             <div className="space-y-4 sm:space-y-5">
               {filtered.map(c => {
                 const isHidden = c.currently_employed && !isPremium
+                const avail = formatAvailability(c)
                 return (
                   <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-all relative" onMouseEnter={() => logView(c.id)}>
                     {isHidden && (
@@ -644,7 +688,6 @@ export default function Home() {
                       </div>
                     )}
                     <div className={`p-5 sm:p-6 ${isHidden ? 'filter blur-[2px]' : ''}`}>
-                      {/* Header: Photo + Name + Title */}
                       <div className="flex gap-4">
                         {c.photo_url ? (
                           <img src={c.photo_url} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 ring-1 ring-slate-200" />
@@ -657,7 +700,6 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Key facts */}
                       <div className="mt-5 space-y-3">
                         {c.location && (
                           <div className="flex">
@@ -671,10 +713,10 @@ export default function Home() {
                             <span className="text-sm text-slate-800">{c.experience_years} Jahre</span>
                           </div>
                         )}
-                        {c.available_from && (
+                        {avail && (
                           <div className="flex">
                             <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Verfügbar</span>
-                            <span className="text-sm text-slate-800">{new Date(c.available_from).toLocaleDateString('de-DE')}</span>
+                            <span className="text-sm text-slate-800">{avail}</span>
                           </div>
                         )}
                         {c.salary_desired_k && (
@@ -683,9 +725,20 @@ export default function Home() {
                             <span className="text-sm text-slate-800">{c.salary_desired_k}k € {c.salary_negotiable && <span className="text-slate-500">(verhandelbar)</span>}</span>
                           </div>
                         )}
+                        {isAdmin && c.phone && (
+                          <div className="flex">
+                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Telefon</span>
+                            <span className="text-sm text-slate-800">{c.phone}</span>
+                          </div>
+                        )}
+                        {isAdmin && c.linkedin && (
+                          <div className="flex">
+                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">LinkedIn</span>
+                            <a href={c.linkedin} target="_blank" className="text-sm text-blue-600 underline truncate">{c.linkedin}</a>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Bio */}
                       {c.bio && (
                         <div className="mt-5">
                           <p className="text-xs uppercase tracking-wide text-slate-400 mb-1">Über mich</p>
@@ -693,7 +746,6 @@ export default function Home() {
                         </div>
                       )}
 
-                      {/* Skills & Industries */}
                       {(c.skills?.length > 0 || c.industries?.length > 0) && (
                         <div className="mt-5 space-y-3">
                           {c.skills?.length > 0 && (
@@ -719,7 +771,6 @@ export default function Home() {
                         </div>
                       )}
 
-                      {/* Footer */}
                       <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-3">
                         {c.cv_url && !isHidden && (
                           <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
@@ -771,6 +822,14 @@ export default function Home() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Wen sucht ihr aktuell?</label>
                 <textarea value={searchingFor} onChange={e => setSearchingFor(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" rows={4} placeholder="z.B. Senior Sales Manager für DACH..." />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Telefonnummer</label>
+                <input value={recruiterPhone} onChange={e => setRecruiterPhone(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">LinkedIn (optional)</label>
+                <input value={recruiterLinkedin} onChange={e => setRecruiterLinkedin(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
               <button onClick={saveRecruiterProfile} disabled={saving} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 transition">
                 {saving ? 'Speichere...' : 'Firmenprofil speichern'}
               </button>
@@ -790,14 +849,14 @@ export default function Home() {
                 <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">Foto</div>
               )}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Profilbild</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Profilbild (optional)</label>
                 <input type="file" accept="image/*" onChange={uploadPhoto} disabled={uploadingPhoto} className="text-sm text-slate-600" />
                 {uploadingPhoto && <p className="text-xs text-slate-500 mt-1">Lade hoch...</p>}
               </div>
             </div>
 
             <div className="mb-8">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Lebenslauf (PDF)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Lebenslauf (PDF, optional)</label>
               <input type="file" accept="application/pdf" onChange={uploadCv} disabled={uploadingCv} className="text-sm text-slate-600" />
               {uploadingCv && <p className="text-xs text-slate-500 mt-1">Lade CV hoch...</p>}
               {cvUrl && (
@@ -831,19 +890,27 @@ export default function Home() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Ort</label>
                 <input value={location} onChange={e => setLocation(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Hamburg, Remote..." />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Jahre Berufserfahrung</label>
+                <input type="number" value={experience} onChange={e => setExperience(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Verfügbarkeit</label>
+                <select value={availability} onChange={e => setAvailability(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  {AVAILABILITY_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              {availability === 'datum' && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Jahre Berufserfahrung</label>
-                  <input type="number" value={experience} onChange={e => setExperience(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Verfügbar ab</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Ab Datum</label>
                   <input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
-              </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Wunschgehalt (in 1.000 €)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Wunschgehalt (in 1.000 €, optional)</label>
                   <input type="number" value={salary} onChange={e => setSalary(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="75" />
                 </div>
                 <div className="flex items-end pb-2">
@@ -854,7 +921,7 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Aktueller Arbeitgeber</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Aktueller Arbeitgeber (optional)</label>
                 <input value={currentCompany} onChange={e => setCurrentCompany(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <label className="flex items-center gap-2">
@@ -862,16 +929,24 @@ export default function Home() {
                 <span className="text-sm text-slate-700">Ich bin aktuell noch im Job</span>
               </label>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Bio</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Bio (optional)</label>
                 <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" rows={3} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Skills (kommagetrennt)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Skills (kommagetrennt, optional)</label>
                 <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="React, TypeScript, Sales..." />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Branchen (kommagetrennt)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Branchen (kommagetrennt, optional)</label>
                 <input value={industries} onChange={e => setIndustries(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="IT, SaaS, Hospitality..." />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Telefonnummer</label>
+                <input value={candidatePhone} onChange={e => setCandidatePhone(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">LinkedIn (optional)</label>
+                <input value={candidateLinkedin} onChange={e => setCandidateLinkedin(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <button onClick={saveProfile} disabled={saving} className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 transition">
                 {saving ? 'Speichere...' : 'Profil speichern'}
