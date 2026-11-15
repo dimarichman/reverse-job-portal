@@ -580,66 +580,80 @@ export default function Home() {
             </div>
 
             <h2 className="text-2xl font-semibold mb-6 tracking-tight">Kandidaten ({filtered.length})</h2>
-            <div className="space-y-4">
+            <div className="space-y-5">
               {filtered.map(c => {
                 const isHidden = c.currently_employed && !isAdmin
                 return (
-                  <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-all relative" onMouseEnter={() => logView(c.id)}>
+                  <div key={c.id} className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 relative" onMouseEnter={() => logView(c.id)}>
                     {isHidden && (
-                      <div className="absolute inset-0 bg-white/75 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-2xl">
+                      <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-3xl">
                         <div className="text-center px-6">
+                          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
+                            <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                          </div>
                           <p className="font-semibold text-slate-800">Aktuell noch im Job</p>
                           <p className="text-sm text-slate-500 mt-1">Premium-Feature – bald verfügbar</p>
                         </div>
                       </div>
                     )}
-                    <div className={`p-6 flex gap-5 ${isHidden ? 'filter blur-[1.5px]' : ''}`}>
-                      {c.photo_url ? (
-                        <img src={c.photo_url} alt="" className="w-20 h-20 rounded-2xl object-cover flex-shrink-0" />
-                      ) : (
-                        <div className="w-20 h-20 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 text-sm flex-shrink-0">Foto</div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-xl font-semibold text-slate-900">{isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}</h3>
-                        <p className="text-slate-600 mt-0.5">{c.title || 'Kein Titel'} · {c.location || 'Kein Ort'}</p>
-                        {c.experience_years != null && (
-                          <p className="text-sm text-slate-500 mt-1">{c.experience_years} Jahre Berufserfahrung</p>
+                    <div className={`p-6 ${isHidden ? 'filter blur-[2px]' : ''}`}>
+                      <div className="flex gap-5">
+                        {c.photo_url ? (
+                          <img src={c.photo_url} alt="" className="w-24 h-24 rounded-2xl object-cover flex-shrink-0 ring-2 ring-slate-100" />
+                        ) : (
+                          <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400 text-sm flex-shrink-0">Foto</div>
                         )}
-                        {c.salary_desired_k && (
-                          <p className="text-sm font-medium text-slate-800 mt-1">{c.salary_desired_k}k € {c.salary_negotiable ? '(verhandelbar)' : ''}</p>
-                        )}
-                        {c.bio && <p className="mt-3 text-slate-700 text-sm leading-relaxed line-clamp-2">{isHidden ? '••••••••••••••••••••' : c.bio}</p>}
-                        {(c.skills?.length > 0 || c.industries?.length > 0) && (
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {c.skills?.map((s: string) => (
-                              <span key={s} className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">{s}</span>
-                            ))}
-                            {c.industries?.map((i: string) => (
-                              <span key={i} className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded-full font-medium">{i}</span>
-                            ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h3 className="text-xl font-bold text-slate-900 tracking-tight">{isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}</h3>
+                              <p className="text-slate-600 mt-0.5 font-medium">{c.title || 'Kein Titel'}</p>
+                            </div>
+                            {c.salary_desired_k && (
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-lg font-semibold text-slate-900">{c.salary_desired_k}k €</p>
+                                {c.salary_negotiable && <p className="text-xs text-slate-500">verhandelbar</p>}
+                              </div>
+                            )}
                           </div>
-                        )}
-                        <div className="mt-4 flex items-center gap-3">
-                          {c.cv_url && !isHidden && (
-                            <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
-                              Lebenslauf (PDF) →
-                            </a>
+                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                            {c.location && <span>{c.location}</span>}
+                            {c.experience_years != null && <span>{c.experience_years} Jahre Erfahrung</span>}
+                            {c.available_from && <span>ab {new Date(c.available_from).toLocaleDateString('de-DE')}</span>}
+                          </div>
+                          {c.bio && <p className="mt-3 text-slate-600 text-sm leading-relaxed line-clamp-2">{isHidden ? '••••••••••••••••••••' : c.bio}</p>}
+                          {(c.skills?.length > 0 || c.industries?.length > 0) && (
+                            <div className="mt-4 flex flex-wrap gap-1.5">
+                              {c.skills?.slice(0, 4).map((s: string) => (
+                                <span key={s} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">{s}</span>
+                              ))}
+                              {c.industries?.slice(0, 3).map((i: string) => (
+                                <span key={i} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium">{i}</span>
+                              ))}
+                            </div>
                           )}
-                          {isRecruiter && !isHidden && (
-                            <button
-                              onClick={() => requestContact(c.id)}
-                              className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-xl font-medium transition"
-                            >
-                              Kandidat anfragen
-                            </button>
-                          )}
+                          <div className="mt-5 flex items-center gap-3 pt-4 border-t border-slate-100">
+                            {c.cv_url && !isHidden && (
+                              <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
+                                Lebenslauf →
+                              </a>
+                            )}
+                            {isRecruiter && !isHidden && (
+                              <button
+                                onClick={() => requestContact(c.id)}
+                                className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm px-5 py-2.5 rounded-xl font-medium transition shadow-sm"
+                              >
+                                Anfragen
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 )
               })}
-              {filtered.length === 0 && <p className="text-slate-500">Keine Kandidaten gefunden.</p>}
+              {filtered.length === 0 && <p className="text-slate-500 text-center py-12">Keine Kandidaten gefunden.</p>}
             </div>
           </>
         )}
