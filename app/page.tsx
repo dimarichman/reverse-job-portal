@@ -34,6 +34,7 @@ export default function Home() {
   const [candidateRequests, setCandidateRequests] = useState<any[]>([])
   const [adminRequests, setAdminRequests] = useState<any[]>([])
   const [adminViews, setAdminViews] = useState<any[]>([])
+  const [adminRecruiters, setAdminRecruiters] = useState<any[]>([])
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [needsProfile, setNeedsProfile] = useState(false)
@@ -107,6 +108,7 @@ export default function Home() {
           if (u.email?.toLowerCase() === 'dimarachmann@aol.com') {
             await loadAdminRequests()
             await loadAdminViews()
+            await loadAdminRecruiters()
           }
         }
       } catch (e) {
@@ -144,6 +146,7 @@ export default function Home() {
         if (u.email?.toLowerCase() === 'dimarachmann@aol.com') {
           await loadAdminRequests()
           await loadAdminViews()
+          await loadAdminRecruiters()
         }
       }
     })
@@ -256,13 +259,37 @@ export default function Home() {
   }
 
   async function loadAdminRequests() {
-    const { data } = await supabase.from('contact_requests').select('*').order('created_at', { ascending: false })
-    setAdminRequests(data || [])
+    const { data: reqs } = await supabase.from('contact_requests').select('*').order('created_at', { ascending: false })
+    if (!reqs) return
+
+    const enriched = await Promise.all(reqs.map(async (r) => {
+      const { data: rp } = await supabase.from('recruiter_profiles').select('company_name, logo_url, phone').eq('user_id', r.recruiter_id).maybeSingle()
+      const { data: cand } = await supabase.from('candidates').select('full_name, title').eq('id', r.candidate_id).maybeSingle()
+      return {
+        ...r,
+        company_name: rp?.company_name || 'Unbekannte Firma',
+        logo_url: rp?.logo_url,
+        recruiter_phone: rp?.phone,
+        candidate_name: cand?.full_name || 'Unbekannter Kandidat',
+        candidate_title: cand?.title,
+      }
+    }))
+    setAdminRequests(enriched)
   }
 
   async function loadAdminViews() {
     const { data } = await supabase.from('candidate_views').select('*').order('viewed_at', { ascending: false }).limit(100)
     setAdminViews(data || [])
+  }
+
+  async function loadAdminRecruiters() {
+    const { data } = await supabase.from('recruiter_profiles').select('*').order('updated_at', { ascending: false })
+    setAdminRecruiters(data || [])
+  }
+
+  async function togglePremium(recruiterId: string, current: boolean) {
+    await supabase.from('recruiter_profiles').update({ is_premium: !current }).eq('id', recruiterId)
+    await loadAdminRecruiters()
   }
 
   async function updateRequestStatus(id: string, status: string) {
@@ -469,6 +496,7 @@ export default function Home() {
     setCandidateRequests([])
     setAdminRequests([])
     setAdminViews([])
+    setAdminRecruiters([])
     setNotifications([])
     setUnreadCount(0)
     setNeedsProfile(false)
@@ -625,20 +653,46 @@ export default function Home() {
         )}
 
         {view === 'admin' && isAdmin && (
-          <div className="space-y-8 sm:space-y-10">
+          <div className="space-y-10">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-5 tracking-tight">Kontaktanfragen</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 tracking-tight">Recruiter & Premium</h2>
+              <div className="space-y-3">
+                {adminRecruiters.map(r => (
+                  <div key={r.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100 flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-semibold">{r.company_name || 'Unbekannte Firma'}</p>
+                      <p className="text-sm text-slate-500">{r.searching_for || 'Keine Beschreibung'}</p>
+                      {r.phone && <p className="text-xs text-slate-400 mt-1">{r.phone}</p>}
+                    </div>
+                    <button
+                      onClick={() => togglePremium(r.id, !!r.is_premium)}
+                      className={`text-sm px-4 py-2 rounded-xl font-medium ${r.is_premium ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}
+                    >
+                      {r.is_premium ? 'Premium' : 'Standard'}
+                    </button>
+                  </div>
+                ))}
+                {adminRecruiters.length === 0 && <p className="text-slate-500">Noch keine Recruiter-Profile.</p>}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 tracking-tight">Kontaktanfragen</h2>
               <div className="space-y-4">
                 {adminRequests.map(r => (
                   <div key={r.id} className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <div className="flex justify-between items-start">
-                      <p className="font-semibold">Anfrage {r.id.slice(0, 8)}</p>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{r.status}</span>
+                    <div className="flex justify-between items-start gap-3">
+                      <div>
+                        <p className="font-semibold">{r.company_name}</p>
+                        <p className="text-sm text-slate-600 mt-0.5">an <span className="font-medium text-slate-900">{r.candidate_name}</span>{r.candidate_title ? ` · ${r.candidate_title}` : ''}</p>
+                      </div>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0 ${r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{r.status}</span>
                     </div>
                     <p className="mt-3 text-sm text-slate-700">{r.message || '(keine Nachricht)'}</p>
-                    <p className="text-xs text-slate-400 mt-3">{new Date(r.created_at).toLocaleString()}</p>
+                    {r.recruiter_phone && <p className="text-xs text-slate-500 mt-2">Telefon: {r.recruiter_phone}</p>}
+                    <p className="text-xs text-slate-400 mt-2">{new Date(r.created_at).toLocaleString()}</p>
                     {r.status === 'pending' && (
-                      <div className="mt-4 sm:mt-5 flex gap-2 justify-end">
+                      <div className="mt-4 flex gap-2 justify-end">
                         <button onClick={() => updateRequestStatus(r.id, 'approved')} className="bg-green-600 text-white text-sm px-4 py-2 rounded-xl font-medium">Freigeben</button>
                         <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="bg-red-600 text-white text-sm px-4 py-2 rounded-xl font-medium">Ablehnen</button>
                       </div>
@@ -650,7 +704,7 @@ export default function Home() {
             </div>
 
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-5 tracking-tight">Profil-Ansichten</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 tracking-tight">Profil-Ansichten</h2>
               <div className="space-y-2">
                 {adminViews.map(v => (
                   <div key={v.id} className="bg-white p-4 rounded-xl border border-slate-100 text-sm flex justify-between">
