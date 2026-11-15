@@ -18,6 +18,7 @@ export default function Home() {
   const [view, setView] = useState<'overview' | 'profile' | 'requests' | 'admin'>('overview')
   const [requests, setRequests] = useState<any[]>([])
   const [adminRequests, setAdminRequests] = useState<any[]>([])
+  const [adminViews, setAdminViews] = useState<any[]>([])
 
   const [filterExp, setFilterExp] = useState('')
   const [filterSalary, setFilterSalary] = useState('')
@@ -60,6 +61,7 @@ export default function Home() {
           }
           if (data.session.user.email === 'dimarachmann@aol.com') {
             await loadAdminRequests()
+            await loadAdminViews()
           }
         }
       } catch (e) {
@@ -82,6 +84,7 @@ export default function Home() {
         }
         if (session.user.email === 'dimarachmann@aol.com') {
           await loadAdminRequests()
+          await loadAdminViews()
         }
       }
     })
@@ -93,6 +96,14 @@ export default function Home() {
     setCandidates(data || [])
   }
 
+  async function logView(candidateId: string) {
+    if (!user || (user.user_metadata?.role || 'candidate') !== 'recruiter') return
+    await supabase.from('candidate_views').insert({
+      recruiter_id: user.id,
+      candidate_id: candidateId
+    }).catch(() => {})
+  }
+
   async function loadMyRequests(userId: string) {
     const { data } = await supabase.from('contact_requests').select('*, candidates(full_name, title)').eq('recruiter_id', userId).order('created_at', { ascending: false })
     setRequests(data || [])
@@ -101,6 +112,11 @@ export default function Home() {
   async function loadAdminRequests() {
     const { data } = await supabase.from('contact_requests').select('*, candidates(full_name, title)').order('created_at', { ascending: false })
     setAdminRequests(data || [])
+  }
+
+  async function loadAdminViews() {
+    const { data } = await supabase.from('candidate_views').select('*, candidates(full_name, title)').order('viewed_at', { ascending: false }).limit(100)
+    setAdminViews(data || [])
   }
 
   async function updateRequestStatus(id: string, status: string) {
@@ -131,6 +147,7 @@ export default function Home() {
 
   async function requestContact(candidateId: string) {
     if (!user) return
+    await logView(candidateId)
     const message = prompt('Kurze Nachricht (optional):') || ''
     const { error } = await supabase.from('contact_requests').insert({
       recruiter_id: user.id,
@@ -278,6 +295,7 @@ export default function Home() {
     setProfile(null)
     setRequests([])
     setAdminRequests([])
+    setAdminViews([])
   }
 
   const filtered = candidates.filter(c => {
@@ -344,27 +362,42 @@ export default function Home() {
       </nav>
 
       {view === 'admin' && isAdmin && (
-        <div>
-          <h2 className="text-2xl font-semibold mb-6">Kontaktanfragen</h2>
-          <div className="space-y-3">
-            {adminRequests.map(r => (
-              <div key={r.id} className="bg-white p-4 rounded-xl border flex justify-between items-start">
-                <div>
-                  <p className="font-medium">{r.candidates?.full_name || 'Unbekannt'} · {r.candidates?.title || ''}</p>
-                  <p className="text-sm text-gray-600 mt-1">{r.message || '(keine Nachricht)'}</p>
-                  <p className="text-xs text-gray-400 mt-1">Status: {r.status} · {new Date(r.created_at).toLocaleString()}</p>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">Kontaktanfragen</h2>
+            <div className="space-y-3">
+              {adminRequests.map(r => (
+                <div key={r.id} className="bg-white p-4 rounded-xl border flex justify-between items-start">
+                  <div>
+                    <p className="font-medium">{r.candidates?.full_name || 'Unbekannt'} · {r.candidates?.title || ''}</p>
+                    <p className="text-sm text-gray-600 mt-1">{r.message || '(keine Nachricht)'}</p>
+                    <p className="text-xs text-gray-400 mt-1">Status: {r.status} · {new Date(r.created_at).toLocaleString()}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    {r.status === 'pending' && (
+                      <>
+                        <button onClick={() => updateRequestStatus(r.id, 'approved')} className="bg-green-600 text-white text-xs px-3 py-1 rounded">Freigeben</button>
+                        <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="bg-red-600 text-white text-xs px-3 py-1 rounded">Ablehnen</button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {r.status === 'pending' && (
-                    <>
-                      <button onClick={() => updateRequestStatus(r.id, 'approved')} className="bg-green-600 text-white text-xs px-3 py-1 rounded">Freigeben</button>
-                      <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="bg-red-600 text-white text-xs px-3 py-1 rounded">Ablehnen</button>
-                    </>
-                  )}
+              ))}
+              {adminRequests.length === 0 && <p className="text-gray-500">Keine Anfragen.</p>}
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">Profil-Ansichten</h2>
+            <div className="space-y-2">
+              {adminViews.map(v => (
+                <div key={v.id} className="bg-white p-3 rounded-lg border text-sm">
+                  <span className="font-medium">{v.candidates?.full_name || 'Unbekannt'}</span>
+                  <span className="text-gray-500"> · angesehen {new Date(v.viewed_at).toLocaleString()}</span>
                 </div>
-              </div>
-            ))}
-            {adminRequests.length === 0 && <p className="text-gray-500">Keine Anfragen.</p>}
+              ))}
+              {adminViews.length === 0 && <p className="text-gray-500">Noch keine Ansichten.</p>}
+            </div>
           </div>
         </div>
       )}
@@ -385,7 +418,7 @@ export default function Home() {
         </div>
       )}
 
-      {(view === 'overview' || (isRecruiter && view === 'overview')) && (
+      {view === 'overview' && (
         <>
           <div className="mb-6 bg-white rounded-2xl border border-gray-100 p-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -401,7 +434,7 @@ export default function Home() {
           <h2 className="text-2xl font-semibold mb-6 text-gray-900">Kandidaten ({filtered.length})</h2>
           <div className="space-y-4">
             {filtered.map(c => (
-              <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+              <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow" onMouseEnter={() => logView(c.id)}>
                 <div className="p-6 flex gap-5">
                   {c.photo_url ? (
                     <img src={c.photo_url} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
@@ -430,7 +463,7 @@ export default function Home() {
                     )}
                     <div className="mt-4 flex items-center gap-3">
                       {c.cv_url && (
-                        <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline">
+                        <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
                           Lebenslauf (PDF) →
                         </a>
                       )}
