@@ -15,7 +15,9 @@ export default function Home() {
   const [profile, setProfile] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
-  const [view, setView] = useState<'overview' | 'profile'>('overview')
+  const [view, setView] = useState<'overview' | 'profile' | 'requests' | 'admin'>('overview')
+  const [requests, setRequests] = useState<any[]>([])
+  const [adminRequests, setAdminRequests] = useState<any[]>([])
 
   const [filterExp, setFilterExp] = useState('')
   const [filterSalary, setFilterSalary] = useState('')
@@ -41,6 +43,8 @@ export default function Home() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [uploadingCv, setUploadingCv] = useState(false)
 
+  const isAdmin = user?.email === 'dimarachmann@aol.com'
+
   useEffect(() => {
     const check = async () => {
       try {
@@ -50,6 +54,12 @@ export default function Home() {
           await loadCandidates()
           if ((data.session.user.user_metadata?.role || 'candidate') === 'candidate') {
             await loadProfile(data.session.user.id)
+          }
+          if ((data.session.user.user_metadata?.role || 'candidate') === 'recruiter') {
+            await loadMyRequests(data.session.user.id)
+          }
+          if (data.session.user.email === 'dimarachmann@aol.com') {
+            await loadAdminRequests()
           }
         }
       } catch (e) {
@@ -67,6 +77,12 @@ export default function Home() {
         if ((session.user.user_metadata?.role || 'candidate') === 'candidate') {
           await loadProfile(session.user.id)
         }
+        if ((session.user.user_metadata?.role || 'candidate') === 'recruiter') {
+          await loadMyRequests(session.user.id)
+        }
+        if (session.user.email === 'dimarachmann@aol.com') {
+          await loadAdminRequests()
+        }
       }
     })
     return () => listener.subscription.unsubscribe()
@@ -75,6 +91,21 @@ export default function Home() {
   async function loadCandidates() {
     const { data } = await supabase.from('candidates').select('*').order('created_at', { ascending: false }).limit(50)
     setCandidates(data || [])
+  }
+
+  async function loadMyRequests(userId: string) {
+    const { data } = await supabase.from('contact_requests').select('*, candidates(full_name, title)').eq('recruiter_id', userId).order('created_at', { ascending: false })
+    setRequests(data || [])
+  }
+
+  async function loadAdminRequests() {
+    const { data } = await supabase.from('contact_requests').select('*, candidates(full_name, title)').order('created_at', { ascending: false })
+    setAdminRequests(data || [])
+  }
+
+  async function updateRequestStatus(id: string, status: string) {
+    await supabase.from('contact_requests').update({ status }).eq('id', id)
+    await loadAdminRequests()
   }
 
   async function loadProfile(userId: string) {
@@ -108,7 +139,10 @@ export default function Home() {
       status: 'pending'
     })
     if (error) alert('Fehler: ' + error.message)
-    else alert('Anfrage gesendet. Admin prüft sie.')
+    else {
+      alert('Anfrage gesendet.')
+      await loadMyRequests(user.id)
+    }
   }
 
   async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -242,6 +276,8 @@ export default function Home() {
     setUser(null)
     setCandidates([])
     setProfile(null)
+    setRequests([])
+    setAdminRequests([])
   }
 
   const filtered = candidates.filter(c => {
@@ -289,29 +325,67 @@ export default function Home() {
       <header className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-blue-600">Job Heroes</h1>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">{user.email} · {isRecruiter ? 'Recruiter' : 'Kandidat'}</span>
+          <span className="text-sm text-gray-600">{user.email} · {isRecruiter ? 'Recruiter' : 'Kandidat'}{isAdmin ? ' · Admin' : ''}</span>
           <button onClick={signOut} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm">Abmelden</button>
         </div>
       </header>
 
-      <nav className="flex gap-2 mb-8">
-        <button
-          onClick={() => setView('overview')}
-          className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'overview' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-        >
-          Übersicht
-        </button>
+      <nav className="flex gap-2 mb-8 flex-wrap">
+        <button onClick={() => setView('overview')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'overview' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Übersicht</button>
         {!isRecruiter && (
-          <button
-            onClick={() => setView('profile')}
-            className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-          >
-            Mein Profil
-          </button>
+          <button onClick={() => setView('profile')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Mein Profil</button>
+        )}
+        {isRecruiter && (
+          <button onClick={() => setView('requests')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Meine Anfragen</button>
+        )}
+        {isAdmin && (
+          <button onClick={() => setView('admin')} className={`px-5 py-2 rounded-xl text-sm font-medium transition ${view === 'admin' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Admin</button>
         )}
       </nav>
 
-      {view === 'overview' || isRecruiter ? (
+      {view === 'admin' && isAdmin && (
+        <div>
+          <h2 className="text-2xl font-semibold mb-6">Kontaktanfragen</h2>
+          <div className="space-y-3">
+            {adminRequests.map(r => (
+              <div key={r.id} className="bg-white p-4 rounded-xl border flex justify-between items-start">
+                <div>
+                  <p className="font-medium">{r.candidates?.full_name || 'Unbekannt'} · {r.candidates?.title || ''}</p>
+                  <p className="text-sm text-gray-600 mt-1">{r.message || '(keine Nachricht)'}</p>
+                  <p className="text-xs text-gray-400 mt-1">Status: {r.status} · {new Date(r.created_at).toLocaleString()}</p>
+                </div>
+                <div className="flex gap-2">
+                  {r.status === 'pending' && (
+                    <>
+                      <button onClick={() => updateRequestStatus(r.id, 'approved')} className="bg-green-600 text-white text-xs px-3 py-1 rounded">Freigeben</button>
+                      <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="bg-red-600 text-white text-xs px-3 py-1 rounded">Ablehnen</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+            {adminRequests.length === 0 && <p className="text-gray-500">Keine Anfragen.</p>}
+          </div>
+        </div>
+      )}
+
+      {view === 'requests' && isRecruiter && (
+        <div>
+          <h2 className="text-2xl font-semibold mb-6">Meine Anfragen</h2>
+          <div className="space-y-3">
+            {requests.map(r => (
+              <div key={r.id} className="bg-white p-4 rounded-xl border">
+                <p className="font-medium">{r.candidates?.full_name || 'Unbekannt'} · {r.candidates?.title || ''}</p>
+                <p className="text-sm text-gray-600 mt-1">{r.message || '(keine Nachricht)'}</p>
+                <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600' : r.status === 'rejected' ? 'text-red-600' : 'text-yellow-600'}>{r.status}</span></p>
+              </div>
+            ))}
+            {requests.length === 0 && <p className="text-gray-500">Noch keine Anfragen.</p>}
+          </div>
+        </div>
+      )}
+
+      {(view === 'overview' || (isRecruiter && view === 'overview')) && (
         <>
           <div className="mb-6 bg-white rounded-2xl border border-gray-100 p-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -376,7 +450,9 @@ export default function Home() {
             {filtered.length === 0 && <p className="text-gray-500">Keine Kandidaten gefunden.</p>}
           </div>
         </>
-      ) : (
+      )}
+
+      {view === 'profile' && !isRecruiter && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-2xl">
           <h2 className="text-2xl font-semibold mb-6 text-gray-900">Mein Profil</h2>
           {msg && <div className={`p-3 rounded-lg mb-6 text-sm ${msg.includes('Fehler') || msg.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
