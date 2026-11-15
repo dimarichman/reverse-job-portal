@@ -34,6 +34,7 @@ export default function Home() {
   const [adminViews, setAdminViews] = useState<any[]>([])
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [needsProfile, setNeedsProfile] = useState(false)
 
   const [filterExp, setFilterExp] = useState('')
   const [filterSalary, setFilterSalary] = useState('')
@@ -82,13 +83,23 @@ export default function Home() {
         if (u) {
           await loadCandidates()
           await loadNotifications(u.id)
-          if ((u.user_metadata?.role || 'candidate') === 'candidate') {
-            await loadProfile(u.id)
+          const userRole = u.user_metadata?.role || 'candidate'
+          if (userRole === 'candidate') {
+            const hasProfile = await loadProfile(u.id)
+            if (!hasProfile) {
+              setNeedsProfile(true)
+              setView('profile')
+              // Prefill from auth metadata
+              setCandidatePhone(u.user_metadata?.phone || '')
+              setCandidateLinkedin(u.user_metadata?.linkedin || '')
+            }
             await loadCandidateRequests(u.id)
           }
-          if ((u.user_metadata?.role || 'candidate') === 'recruiter') {
+          if (userRole === 'recruiter') {
             await loadMyRequests(u.id)
             await loadRecruiterProfile(u.id)
+            setRecruiterPhone(u.user_metadata?.phone || '')
+            setRecruiterLinkedin(u.user_metadata?.linkedin || '')
           }
           if (u.email?.toLowerCase() === 'dimarachmann@aol.com') {
             await loadAdminRequests()
@@ -109,13 +120,22 @@ export default function Home() {
       if (u) {
         await loadCandidates()
         await loadNotifications(u.id)
-        if ((u.user_metadata?.role || 'candidate') === 'candidate') {
-          await loadProfile(u.id)
+        const userRole = u.user_metadata?.role || 'candidate'
+        if (userRole === 'candidate') {
+          const hasProfile = await loadProfile(u.id)
+          if (!hasProfile) {
+            setNeedsProfile(true)
+            setView('profile')
+            setCandidatePhone(u.user_metadata?.phone || '')
+            setCandidateLinkedin(u.user_metadata?.linkedin || '')
+          }
           await loadCandidateRequests(u.id)
         }
-        if ((u.user_metadata?.role || 'candidate') === 'recruiter') {
+        if (userRole === 'recruiter') {
           await loadMyRequests(u.id)
           await loadRecruiterProfile(u.id)
+          setRecruiterPhone(u.user_metadata?.phone || '')
+          setRecruiterLinkedin(u.user_metadata?.linkedin || '')
         }
         if (u.email?.toLowerCase() === 'dimarachmann@aol.com') {
           await loadAdminRequests()
@@ -150,8 +170,8 @@ export default function Home() {
       setCompanyName(data.company_name || '')
       setSearchingFor(data.searching_for || '')
       setLogoUrl(data.logo_url || '')
-      setRecruiterPhone(data.phone || '')
-      setRecruiterLinkedin(data.linkedin || '')
+      setRecruiterPhone(data.phone || user?.user_metadata?.phone || '')
+      setRecruiterLinkedin(data.linkedin || user?.user_metadata?.linkedin || '')
     }
   }
 
@@ -271,7 +291,7 @@ export default function Home() {
     if (user) await loadNotifications(user.id)
   }
 
-  async function loadProfile(userId: string) {
+  async function loadProfile(userId: string): Promise<boolean> {
     const { data } = await supabase.from('candidates').select('*').eq('user_id', userId).maybeSingle()
     if (data) {
       setProfile(data)
@@ -292,7 +312,10 @@ export default function Home() {
       setCvUrl(data.cv_url || '')
       setCandidatePhone(data.phone || '')
       setCandidateLinkedin(data.linkedin || '')
+      setNeedsProfile(false)
+      return true
     }
+    return false
   }
 
   async function requestContact(candidateId: string) {
@@ -382,7 +405,9 @@ export default function Home() {
         const { data } = await supabase.from('candidates').insert(payload).select().single()
         setProfile(data)
       }
+      setNeedsProfile(false)
       setMsg('Profil gespeichert!')
+      setView('overview')
     } catch (e: any) {
       setMsg('Fehler: ' + e.message)
     } finally {
@@ -408,8 +433,9 @@ export default function Home() {
           options: { data: { role, phone: phone.trim(), linkedin: linkedin.trim() || null } }
         })
         if (error) throw error
-        alert('Registriert! Du kannst dich jetzt anmelden.')
+        alert('Registriert! Bitte bestätige deine E-Mail und melde dich dann an.')
         setIsLogin(true)
+        setShowAuth(false)
       }
     } catch (err: any) {
       setError(err.message)
@@ -428,6 +454,7 @@ export default function Home() {
     setAdminViews([])
     setNotifications([])
     setUnreadCount(0)
+    setNeedsProfile(false)
     setShowAuth(false)
   }
 
@@ -561,6 +588,12 @@ export default function Home() {
             <button onClick={() => setView('admin')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'admin' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Admin</button>
           )}
         </nav>
+
+        {needsProfile && !isRecruiter && view === 'profile' && (
+          <div className="mb-6 bg-blue-50 border border-blue-100 text-blue-800 p-4 rounded-2xl text-sm">
+            Willkommen! Bitte fülle zuerst dein Profil aus, damit Recruiter dich finden können.
+          </div>
+        )}
 
         {view === 'notifications' && (
           <div>
