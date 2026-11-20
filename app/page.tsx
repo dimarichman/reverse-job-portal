@@ -615,6 +615,43 @@ export default function Home() {
     setShowAuth(false)
   }
 
+  function calculateScore(c: any): number {
+    // Completeness (0-100)
+    let completeness = 0
+    if (c.full_name) completeness += 15
+    if (c.title) completeness += 15
+    if (c.location) completeness += 10
+    if (c.experience_years != null) completeness += 10
+    if (c.availability) completeness += 10
+    if (c.photo_url) completeness += 10
+    if (c.cv_url) completeness += 10
+    if (c.bio) completeness += 5
+    if (c.skills && c.skills.length > 0) completeness += 5
+    if (c.industries && c.industries.length > 0) completeness += 5
+    if (c.salary_desired_k) completeness += 5
+    completeness = Math.min(completeness, 100)
+
+    // Recency (0-100) - based on updated_at or created_at
+    const updated = new Date(c.updated_at || c.created_at || Date.now())
+    const daysAgo = (Date.now() - updated.getTime()) / (1000 * 60 * 60 * 24)
+    const recency = Math.max(0, 100 - daysAgo * 5) // full score if <20 days, decays
+
+    // Availability (0-100)
+    const availMap: Record<string, number> = {
+      sofort: 100,
+      "2_wochen": 80,
+      "1_monat": 60,
+      "3_monate": 40,
+      datum: 20,
+    }
+    const availabilityScore = availMap[c.availability] || 30
+
+    // Certification bonus
+    const certBonus = c.is_certified ? 15 : 0
+
+    return (completeness * 0.40) + (recency * 0.25) + (availabilityScore * 0.20) + certBonus
+  }
+
   function formatAvailability(c: any) {
     if (c.availability === 'sofort') return 'Sofort'
     if (c.availability === '2_wochen') return 'Innerhalb von 2 Wochen'
@@ -634,7 +671,7 @@ export default function Home() {
     if (filterJob && !c.title?.toLowerCase().includes(filterJob.toLowerCase())) return false
     if (filterIndustry && !c.industries?.some((i: string) => i.toLowerCase().includes(filterIndustry.toLowerCase()))) return false
     return true
-  })
+  }).sort((a, b) => calculateScore(b) - calculateScore(a))
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500">Lade...</div>
 
