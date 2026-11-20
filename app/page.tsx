@@ -1038,7 +1038,7 @@ export default function Home() {
                             <span className="text-sm text-slate-800">{c.phone}</span>
                           </div>
                         )}
-                        {isAdmin && c.linkedin && (
+                        {isPremium && c.linkedin && (
                           <div className="flex">
                             <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">LinkedIn</span>
                             <a href={c.linkedin} target="_blank" className="text-sm text-blue-600 underline truncate">{c.linkedin}</a>
