@@ -531,6 +531,7 @@ export default function Home() {
       phone: candidatePhone || null,
       linkedin: candidateLinkedin || null,
       is_active: isActive,
+      last_candidate_update: new Date().toISOString(),
     }
     try {
       if (profile) {
@@ -631,8 +632,8 @@ export default function Home() {
     if (c.salary_desired_k) completeness += 5
     completeness = Math.min(completeness, 100)
 
-    // Recency (0-100) - based on updated_at or created_at
-    const updated = new Date(c.updated_at || c.created_at || Date.now())
+    // Recency (0-100) - based on last_candidate_update (only candidate self-updates) or created_at
+    const updated = new Date(c.last_candidate_update || c.created_at || Date.now())
     const daysAgo = (Date.now() - updated.getTime()) / (1000 * 60 * 60 * 24)
     const recency = Math.max(0, 100 - daysAgo * 5) // full score if <20 days, decays
 
