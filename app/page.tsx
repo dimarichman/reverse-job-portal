@@ -821,12 +821,54 @@ export default function Home() {
           <button onClick={() => setShowAuth(true)} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium">Anmelden</button>
         </header>
 
-        <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-12 pb-16 text-center">
-          <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight leading-tight">Firmen suchen dich.<br />Nicht umgekehrt.</h2>
-          <p className="mt-5 text-lg text-slate-600 max-w-xl mx-auto">Das umgekehrte Job-Portal. Du erstellst dein Profil – Recruiter kommen auf dich zu.</p>
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
+          <p className="text-blue-600 font-medium text-sm tracking-wide uppercase mb-3">Das umgekehrte Job-Portal</p>
+          <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight leading-tight">Firmen kommen zu dir.<br />Nicht umgekehrt.</h2>
+          <p className="mt-5 text-lg text-slate-600 max-w-xl mx-auto">Erstelle dein Profil in wenigen Minuten. Recruiter suchen dich aktiv – du entscheidest, mit wem du sprichst.</p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={() => { setShowAuth(true); setIsLogin(false); setRole('candidate') }} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition">Als Kandidat starten</button>
-            <button onClick={() => { setShowAuth(true); setIsLogin(false); setRole('recruiter') }} className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 px-6 py-3 rounded-xl font-medium transition">Als Recruiter starten</button>
+            <button onClick={() => { setShowAuth(true); setIsLogin(false); setRole('candidate') }} className="bg-blue-600 hover:bg-blue-700 text-white px-7 py-3.5 rounded-xl font-medium transition shadow-sm">Kostenlos als Kandidat starten</button>
+            <button onClick={() => { setShowAuth(true); setIsLogin(false); setRole('recruiter') }} className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 px-7 py-3.5 rounded-xl font-medium transition">Als Recruiter suchen</button>
+          </div>
+        </section>
+
+        <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-12">
+          <h3 className="text-center text-sm font-medium text-slate-400 uppercase tracking-wider mb-6">So sieht ein Profil aus</h3>
+          <div className="grid md:grid-cols-2 gap-5 max-w-3xl mx-auto">
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex gap-3">
+                <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">A</div>
+                <div>
+                  <p className="font-semibold">Alex M.</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">Sales Director</span>
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">Head of Sales</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">Hamburg</span>
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">Remote</span>
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">Berlin</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-3">8 Jahre · Sofort verfügbar · OTE 140k</p>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex gap-3">
+                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-semibold">L</div>
+                <div>
+                  <p className="font-semibold">Laura K.</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">Product Manager</span>
+                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">Product Owner</span>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">München</span>
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">Hybrid</span>
+              </div>
+              <p className="text-xs text-slate-500 mt-3">5 Jahre · In 1 Monat · OTE 95k</p>
+            </div>
           </div>
         </section>
 
