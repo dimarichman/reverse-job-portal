@@ -719,6 +719,14 @@ export default function Home() {
           </div>
         </section>
 
+        <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-8 mt-8 border-t border-slate-200 text-center text-sm text-slate-500">
+          <div className="flex justify-center gap-6">
+            <a href="/impressum" className="hover:text-slate-700">Impressum</a>
+            <a href="/datenschutz" className="hover:text-slate-700">Datenschutz</a>
+          </div>
+          <p className="mt-2">© {new Date().getFullYear()} Job Heroes</p>
+        </footer>
+
         {showAuth && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowAuth(false)}>
             <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8" onClick={e => e.stopPropagation()}>
@@ -1361,6 +1369,13 @@ export default function Home() {
           </div>
         )}
       </div>
+      <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-8 border-t border-slate-200 text-center text-sm text-slate-500">
+        <div className="flex justify-center gap-6">
+          <a href="/impressum" className="hover:text-slate-700">Impressum</a>
+          <a href="/datenschutz" className="hover:text-slate-700">Datenschutz</a>
+        </div>
+        <p className="mt-2">© {new Date().getFullYear()} Job Heroes</p>
+      </footer>
     </div>
   )
 }
