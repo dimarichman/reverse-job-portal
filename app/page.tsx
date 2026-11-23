@@ -49,22 +49,6 @@ const INDUSTRIES = [
   'Gaming', 'Cybersecurity', 'AI / Machine Learning',
 ]
 
-// Approximate OTE medians in k€ (2026, blended from public sources)
-// Hierarchy: Account Executive < Sales Manager < Sales Director < Head of Sales < VP Sales
-const SALARY_BENCHMARKS: Record<string, Record<string, number>> = {
-  'Account Executive': { 'Hamburg': 90, 'Berlin': 95, 'München': 100, 'London': 110, 'Amsterdam': 95, 'Remote': 85, 'New York': 120 },
-  'Sales Manager': { 'Hamburg': 110, 'Berlin': 115, 'München': 120, 'London': 130, 'Amsterdam': 115, 'Remote': 105, 'New York': 140 },
-  'Sales Director': { 'Hamburg': 140, 'Berlin': 145, 'München': 150, 'London': 160, 'Amsterdam': 140, 'Remote': 135, 'New York': 180, 'San Francisco': 190 },
-  'Head of Sales': { 'Hamburg': 170, 'Berlin': 175, 'München': 180, 'London': 190, 'Amsterdam': 170, 'Remote': 165, 'New York': 210 },
-  'VP Sales': { 'Hamburg': 190, 'Berlin': 195, 'München': 200, 'London': 210, 'Amsterdam': 190, 'Remote': 185, 'New York': 230 },
-  'Country Manager': { 'Hamburg': 160, 'Berlin': 165, 'München': 170, 'London': 180, 'Amsterdam': 160, 'Remote': 155, 'New York': 200 },
-  'Commercial Director': { 'Hamburg': 155, 'Berlin': 160, 'München': 165, 'London': 175, 'Amsterdam': 155, 'Remote': 150, 'New York': 195 },
-  'Product Manager': { 'Hamburg': 100, 'Berlin': 105, 'München': 110, 'London': 120, 'Amsterdam': 105, 'Remote': 95, 'New York': 140, 'San Francisco': 150 },
-  'Software Engineer': { 'Hamburg': 85, 'Berlin': 90, 'München': 95, 'London': 105, 'Amsterdam': 90, 'Remote': 80, 'New York': 130, 'San Francisco': 150 },
-  'Marketing Manager': { 'Hamburg': 80, 'Berlin': 85, 'München': 90, 'London': 100, 'Amsterdam': 85, 'Remote': 75, 'New York': 110 },
-  'Customer Success Manager': { 'Hamburg': 75, 'Berlin': 80, 'München': 85, 'London': 95, 'Amsterdam': 80, 'Remote': 70, 'New York': 100 },
-}
-
 const PROCESS_OPTIONS = [
   { value: 'open', label: 'Offen' },
   { value: 'in_process', label: 'Im Prozess' },
@@ -731,19 +715,6 @@ export default function Home() {
     return (completeness * 0.40) + (recency * 0.25) + (availabilityScore * 0.20) + certBonus
   }
 
-  function getMarketComparison(c: any): string | null {
-    const ote = c.salary_ote_k || c.salary_desired_k
-    if (!ote || !c.title || !c.location) return null
-    const jobBench = SALARY_BENCHMARKS[c.title]
-    if (!jobBench) return null
-    const median = jobBench[c.location] || jobBench['Remote']
-    if (!median) return null
-    const diff = ote - median
-    if (Math.abs(diff) < 5) return `Im Markt (Median ~${median}k)`
-    if (diff > 0) return `Über Markt (+${diff}k, Median ~${median}k)`
-    return `Unter Markt (${diff}k, Median ~${median}k)`
-  }
-
   function formatAvailability(c: any) {
     if (c.availability === 'sofort') return 'Sofort'
     if (c.availability === '2_wochen') return 'Innerhalb von 2 Wochen'
@@ -1165,12 +1136,6 @@ export default function Home() {
                               {c.salary_base_k && ` (Base ${c.salary_base_k}k)`}
                               {c.salary_negotiable && <span className="text-slate-500"> · verhandelbar</span>}
                             </span>
-                          </div>
-                        )}
-                        {getMarketComparison(c) && (
-                          <div className="flex">
-                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Markt</span>
-                            <span className="text-sm text-slate-600">{getMarketComparison(c)}</span>
                           </div>
                         )}
                         {isAdmin && c.phone && (
