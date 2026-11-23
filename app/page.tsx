@@ -75,7 +75,8 @@ export default function Home() {
   const [experience, setExperience] = useState('')
   const [availability, setAvailability] = useState('sofort')
   const [availableFrom, setAvailableFrom] = useState('')
-  const [salary, setSalary] = useState('')
+  const [salaryBase, setSalaryBase] = useState('')
+  const [salaryOte, setSalaryOte] = useState('')
   const [negotiable, setNegotiable] = useState(true)
   const [currentCompany, setCurrentCompany] = useState('')
   const [employed, setEmployed] = useState(false)
@@ -415,7 +416,8 @@ export default function Home() {
       setExperience(data.experience_years?.toString() || '')
       setAvailability(data.availability || 'sofort')
       setAvailableFrom(data.available_from || '')
-      setSalary(data.salary_desired_k?.toString() || '')
+      setSalaryBase(data.salary_base_k?.toString() || '')
+      setSalaryOte(data.salary_ote_k?.toString() || data.salary_desired_k?.toString() || '')
       setNegotiable(data.salary_negotiable !== false)
       setCurrentCompany(data.current_company || '')
       setEmployed(!!data.currently_employed)
@@ -541,7 +543,8 @@ export default function Home() {
       experience_years: experience ? parseInt(experience) : null,
       availability: availability || null,
       available_from: availability === 'datum' ? (availableFrom || null) : null,
-      salary_desired_k: salary ? parseInt(salary) : null,
+      salary_base_k: salaryBase ? parseInt(salaryBase) : null,
+      salary_ote_k: salaryOte ? parseInt(salaryOte) : null,
       salary_negotiable: negotiable,
       current_company: currentCompany || null,
       currently_employed: employed,
@@ -658,7 +661,7 @@ export default function Home() {
     if (c.bio) completeness += 5
     if (c.skills && c.skills.length > 0) completeness += 5
     if (c.industries && c.industries.length > 0) completeness += 5
-    if (c.salary_desired_k) completeness += 5
+    if (c.salary_ote_k || c.salary_desired_k) completeness += 5
 
     if (c.languages?.german && c.languages.german !== 'keine') completeness += 5
     if (c.languages?.english && c.languages.english !== 'keine') completeness += 5
@@ -699,7 +702,7 @@ export default function Home() {
   const filtered = candidates.filter(c => {
     if (c.is_active === false && !(isAdmin && showInactive)) return false
     if (filterExp && (c.experience_years || 0) < parseInt(filterExp)) return false
-    if (filterSalary && (c.salary_desired_k || 999) > parseInt(filterSalary)) return false
+    if (filterSalary && ((c.salary_ote_k || c.salary_desired_k) || 999) > parseInt(filterSalary)) return false
     if (filterLocation && !c.location?.toLowerCase().includes(filterLocation.toLowerCase())) return false
     if (filterSkill && !c.skills?.some((s: string) => s.toLowerCase().includes(filterSkill.toLowerCase()))) return false
     if (filterJob && !c.title?.toLowerCase().includes(filterJob.toLowerCase())) return false
@@ -1090,10 +1093,14 @@ export default function Home() {
                           </div>
                         )}
 
-                        {c.salary_desired_k && (
+                        {(c.salary_ote_k || c.salary_desired_k) && (
                           <div className="flex">
-                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Wunschgehalt</span>
-                            <span className="text-sm text-slate-800">{c.salary_desired_k}k € {c.salary_negotiable && <span className="text-slate-500">(verhandelbar)</span>}</span>
+                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Gehalt</span>
+                            <span className="text-sm text-slate-800">
+                              OTE {c.salary_ote_k || c.salary_desired_k}k
+                              {c.salary_base_k && ` (Base ${c.salary_base_k}k)`}
+                              {c.salary_negotiable && <span className="text-slate-500"> · verhandelbar</span>}
+                            </span>
                           </div>
                         )}
                         {isAdmin && c.phone && (
@@ -1299,7 +1306,10 @@ export default function Home() {
                   <h2 className="text-xl font-semibold mb-2">Noch etwas hinzufügen?</h2>
                   <p className="text-sm text-slate-500 mb-6">Alles optional – du kannst es später ergänzen.</p>
                   <div className="space-y-4">
-                    <input value={salary} onChange={e => setSalary(e.target.value)} placeholder="Wunschgehalt in 1.000 € (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                    <div className="space-y-3">
+                      <input type="number" value={salaryOte} onChange={e => setSalaryOte(e.target.value)} placeholder="OTE in 1.000 € (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                      <input type="number" value={salaryBase} onChange={e => setSalaryBase(e.target.value)} placeholder="Base / Fixum in 1.000 € (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
                     <input value={skills} onChange={e => setSkills(e.target.value)} placeholder="Skills, kommagetrennt (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
                     <input value={industries} onChange={e => setIndustries(e.target.value)} placeholder="Branchen, kommagetrennt (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
                     <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Kurze Bio (optional)" rows={3} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
@@ -1400,18 +1410,18 @@ export default function Home() {
                   <input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Wunschgehalt (in 1.000 €, optional)</label>
-                  <input type="number" value={salary} onChange={e => setSalary(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="75" />
-                </div>
-                <div className="flex items-end pb-2">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={negotiable} onChange={e => setNegotiable(e.target.checked)} className="rounded" />
-                    <span className="text-sm text-slate-700">verhandelbar</span>
-                  </label>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">OTE (in 1.000 €, optional)</label>
+                <input type="number" value={salaryOte} onChange={e => setSalaryOte(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="120" />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Base / Fixum (in 1.000 €, optional)</label>
+                <input type="number" value={salaryBase} onChange={e => setSalaryBase(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="80" />
+              </div>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={negotiable} onChange={e => setNegotiable(e.target.checked)} className="rounded" />
+                <span className="text-sm text-slate-700">verhandelbar</span>
+              </label>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Aktueller Arbeitgeber (optional)</label>
                 <input value={currentCompany} onChange={e => setCurrentCompany(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
