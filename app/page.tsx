@@ -1072,8 +1072,20 @@ export default function Home() {
                           <div className="flex">
                             <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Sprachen</span>
                             <span className="text-sm text-slate-800">
-                              DE: {LANGUAGE_LEVELS.find(l => l.value === c.languages?.german)?.label || c.languages?.german || '–'} · EN: {LANGUAGE_LEVELS.find(l => l.value === c.languages?.english)?.label || c.languages?.english || '–'}
-                              {c.languages?.others?.length > 0 && ` · ${c.languages.others.map((o: any) => `${o.name} (${LANGUAGE_LEVELS.find(l => l.value === o.level)?.label || o.level})`).join(', ')}`}
+                              {(() => {
+                                const parts: string[] = []
+                                const de = LANGUAGE_LEVELS.find(l => l.value === c.languages?.german)?.label
+                                const en = LANGUAGE_LEVELS.find(l => l.value === c.languages?.english)?.label
+                                if (de) parts.push(`DE (${de})`)
+                                if (en) parts.push(`EN (${en})`)
+                                if (c.languages?.others?.length) {
+                                  c.languages.others.forEach((o: any) => {
+                                    const lvl = LANGUAGE_LEVELS.find(l => l.value === o.level)?.label || o.level
+                                    if (o.name) parts.push(`${o.name} (${lvl})`)
+                                  })
+                                }
+                                return parts.join(' · ')
+                              })()}
                             </span>
                           </div>
                         )}
