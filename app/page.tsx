@@ -1447,7 +1447,8 @@ export default function Home() {
                 <button type="button" onClick={() => setOtherLanguages([...otherLanguages, { name: '', level: 'A1' }])} className="text-sm text-blue-600 mt-1">+ Sprache hinzufügen</button>
               </div>
 
-              <label className="block text-sm font-medium text-slate-700 mb-1">Skills (kommagetrennt, optional)</label>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Skills (kommagetrennt, optional)</label>
                 <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="React, TypeScript, Sales..." />
               </div>
               <div>
