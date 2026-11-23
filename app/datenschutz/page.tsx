@@ -37,14 +37,17 @@ export default function Datenschutz() {
             <ul className="list-disc pl-5 space-y-1">
               <li><strong>Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO):</strong> Bereitstellung des Job-Portals, Profilverwaltung, Kontaktvermittlung</li>
               <li><strong>Einwilligung (Art. 6 Abs. 1 lit. a DSGVO):</strong> Freiwillige Angaben wie LinkedIn, Bio, Foto, CV</li>
-              <li><strong>Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO):</strong> Betriebssicherheit, Missbrauchsprävention, Verbesserung des Dienstes</li>
+              <li><strong>Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO):</strong> Betriebssicherheit, Missbrauchsprävention, Verbesserung des Dienstes, Sortierung der Profile</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-slate-900">4. Speicherung und Löschung</h2>
             <p>
-              Deine Daten werden gespeichert, solange dein Konto aktiv ist. Nach Löschung des Kontos werden personenbezogene Daten innerhalb von 30 Tagen gelöscht, sofern keine gesetzlichen Aufbewahrungspflichten entgegenstehen. Lebensläufe und Fotos werden aus dem Speicher (Supabase Storage) entfernt.
+              Deine Daten werden gespeichert, solange dein Konto aktiv ist.<br /><br />
+              <strong>Nach Löschung des Kontos:</strong> Personenbezogene Daten (Profil, Foto, Lebenslauf, Kontaktdaten) werden innerhalb von 30 Tagen gelöscht.<br /><br />
+              <strong>Kontaktanfragen und Prozessdaten:</strong> Daten zu abgelehnten oder abgeschlossenen Kontaktanfragen werden spätestens 6 Monate nach Abschluss des Vorgangs gelöscht, sofern keine gesetzlichen Aufbewahrungspflichten entgegenstehen.<br /><br />
+              Lebensläufe und Fotos werden aus dem Speicher (Supabase Storage) entfernt.
             </p>
           </section>
 
@@ -59,7 +62,14 @@ export default function Datenschutz() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-slate-900">6. Deine Rechte</h2>
+            <h2 className="text-xl font-semibold text-slate-900">6. Sortierung der Profile</h2>
+            <p>
+              Die Anzeige der Kandidatenprofile erfolgt nach einem internen Score, der auf der Vollständigkeit des Profils, der Aktualität (letzte eigene Änderung durch den Kandidaten) und der Verfügbarkeit basiert. Zertifizierte Profile erhalten einen kleinen Bonus. Es handelt sich nicht um eine automatisierte Entscheidung mit rechtlicher Wirkung im Sinne von Art. 22 DSGVO.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-slate-900">7. Deine Rechte</h2>
             <p>Du hast folgende Rechte:</p>
             <ul className="list-disc pl-5 space-y-1">
               <li>Auskunft über deine gespeicherten Daten (Art. 15 DSGVO)</li>
@@ -74,14 +84,14 @@ export default function Datenschutz() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-slate-900">7. Cookies und Tracking</h2>
+            <h2 className="text-xl font-semibold text-slate-900">8. Cookies und Tracking</h2>
             <p>
               Die Plattform verwendet technisch notwendige Cookies für die Anmeldung (Supabase Auth). Es werden keine Tracking-Cookies oder Analyse-Tools von Drittanbietern eingesetzt.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-slate-900">8. Datensicherheit</h2>
+            <h2 className="text-xl font-semibold text-slate-900">9. Datensicherheit</h2>
             <p>
               Die Übertragung erfolgt verschlüsselt (HTTPS). Passwörter werden nicht im Klartext gespeichert. Zugriff auf sensible Kontaktdaten ist auf berechtigte Nutzer beschränkt.
             </p>
