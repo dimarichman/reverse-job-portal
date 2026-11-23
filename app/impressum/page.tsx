@@ -12,8 +12,8 @@ export default function Impressum() {
             <h2 className="text-xl font-semibold text-slate-900">Angaben gemäß § 5 TMG</h2>
             <p>
               Dimitry Rachmann<br />
-              [Straße und Hausnummer]<br />
-              [PLZ] Hamburg<br />
+              Julius-Brecht-Straße 21a<br />
+              22609 Hamburg<br />
               Deutschland
             </p>
           </section>
@@ -21,8 +21,7 @@ export default function Impressum() {
           <section>
             <h2 className="text-xl font-semibold text-slate-900">Kontakt</h2>
             <p>
-              E-Mail: dimarachmann@aol.com<br />
-              Telefon: [Telefonnummer]
+              E-Mail: dimarachmann@aol.com
             </p>
           </section>
 
@@ -30,7 +29,8 @@ export default function Impressum() {
             <h2 className="text-xl font-semibold text-slate-900">Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</h2>
             <p>
               Dimitry Rachmann<br />
-              [Adresse wie oben]
+              Julius-Brecht-Straße 21a<br />
+              22609 Hamburg
             </p>
           </section>
 
@@ -55,10 +55,6 @@ export default function Impressum() {
               Unser Angebot enthält Links zu externen Websites Dritter, auf deren Inhalte wir keinen Einfluss haben. Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich.
             </p>
           </section>
-
-          <p className="text-sm text-slate-500 mt-10">
-            Bitte ersetze die Platzhalter in eckigen Klammern durch deine vollständigen Angaben. Dieses Impressum entspricht den Anforderungen des deutschen Telemediengesetzes (TMG).
-          </p>
         </div>
       </div>
     </div>
