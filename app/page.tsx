@@ -128,6 +128,8 @@ export default function Home() {
   const [recruiterPhone, setRecruiterPhone] = useState('')
   const [recruiterLinkedin, setRecruiterLinkedin] = useState('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [emailNotifications, setEmailNotifications] = useState(true)
+  const [newsletter, setNewsletter] = useState(true)
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL
   const isPremium = isAdmin || recruiterProfile?.is_premium === true
@@ -136,6 +138,16 @@ export default function Home() {
     try {
       await supabase.rpc('notify_admin', { title, message })
     } catch {}
+  }
+
+  async function sendEmail(to: string, subject: string, html: string) {
+    try {
+      await supabase.functions.invoke('send-email', {
+        body: { to, subject, html }
+      })
+    } catch (e) {
+      console.error('Email failed', e)
+    }
   }
 
   useEffect(() => {
@@ -1109,6 +1121,24 @@ export default function Home() {
             </div>
 
             <div>
+              <h2 className="text-lg font-semibold mb-3">Newsletter</h2>
+              <button
+                onClick={async () => {
+                  const subject = window.prompt('Betreff des Newsletters:')
+                  if (!subject) return
+                  const body = window.prompt('Inhalt (HTML erlaubt):')
+                  if (!body) return
+                  const { data: users } = await supabase.from('candidates').select('user_id, full_name').eq('newsletter', true)
+                  alert(`Newsletter wird an ${users?.length || 0} Abonnenten gesendet (Funktion muss eingerichtet sein).`)
+                  // Actual sending happens via Edge Function once Resend is set up
+                }}
+                className="bg-blue-600 text-white text-sm px-4 py-2 rounded-xl"
+              >
+                Newsletter senden
+              </button>
+            </div>
+
+            <div>
               <h2 className="text-lg font-semibold mb-3">Profil-Ansichten</h2>
               <div className="space-y-1 max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-white">
                 {adminViews.slice(0, 20).map(v => (
@@ -1729,6 +1759,16 @@ export default function Home() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Telefonnummer</label>
                 <input value={candidatePhone} onChange={e => setCandidatePhone(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div className="pt-4 border-t border-slate-100 space-y-3">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={emailNotifications} onChange={e => setEmailNotifications(e.target.checked)} className="rounded" />
+                  <span className="text-sm text-slate-700">E-Mail-Benachrichtigungen bei Anfragen & Statusänderungen</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={newsletter} onChange={e => setNewsletter(e.target.checked)} className="rounded" />
+                  <span className="text-sm text-slate-700">Newsletter (Neuigkeiten & Aktivität auf Job Heroes)</span>
+                </label>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">LinkedIn (optional)</label>
