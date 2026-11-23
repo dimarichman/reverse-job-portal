@@ -425,54 +425,11 @@ export default function Home() {
   }
 
   async function updateProcessStatus(requestId: string, processStatus: string) {
-    const { data: req } = await supabase.from('contact_requests').select('*').eq('id', requestId).single()
+    const { data: req } = await supabase.from('contact_requests').select('*').eq('id', requestId).maybeSingle()
+    if (!req) return
     await supabase.from('contact_requests').update({ process_status: processStatus }).eq('id', requestId)
-
-    if (req) {
-      const { data: cand } = await supabase.from('candidates').select('full_name').eq('id', req.candidate_id).maybeSingle()
-      const { data: rp } = await supabase.from('recruiter_profiles').select('company_name').eq('user_id', req.recruiter_id).maybeSingle()
-      const label = PROCESS_OPTIONS.find(o => o.value === processStatus)?.label || processStatus
-      await notifyAdmin(
-        'Prozess-Status geändert',
-        `${rp?.company_name || 'Recruiter'} ↔ ${cand?.full_name || 'Kandidat'}: ${label}`
-      )
-    }
-
-    if (user) {
-      await loadCandidateRequests(user.id)
-      await loadMyRequests(user.id)
-      if (isAdmin) await loadAdminRequests()
-    }
-  }
-
-  async function updateRequestStatus(id: string, status: string) {
-    const { data: req } = await supabase.from('contact_requests').select('*').eq('id', id).single()
-    await supabase.from('contact_requests').update({ status }).eq('id', id)
-
-    if (req) {
-      const title = status === 'approved' ? 'Anfrage freigegeben' : 'Anfrage abgelehnt'
-      const message = status === 'approved' ? 'Deine Anfrage wurde freigegeben.' : 'Deine Anfrage wurde abgelehnt.'
-
-      await supabase.from('notifications').insert({
-        user_id: req.recruiter_id,
-        title,
-        message
-      })
-
-      if (status === 'approved') {
-        const { data: cand } = await supabase.from('candidates').select('user_id').eq('id', req.candidate_id).maybeSingle()
-        if (cand?.user_id) {
-          await supabase.from('notifications').insert({
-            user_id: cand.user_id,
-            title: 'Neue Kontaktanfrage freigegeben',
-            message: 'Eine Firma möchte Kontakt mit dir aufnehmen.'
-          })
-        }
-      }
-    }
-
+    await loadCandidateRequests(user?.id)
     await loadAdminRequests()
-    if (user) await loadNotifications(user.id)
   }
 
   async function loadProfile(userId: string): Promise<boolean> {
@@ -498,6 +455,8 @@ export default function Home() {
       setCandidatePhone(data.phone || '')
       setCandidateLinkedin(data.linkedin || '')
       setIsActive(data.is_active !== false)
+      setNewsletter(data.newsletter !== false)
+      setEmailNotifications(data.email_notifications !== false)
 
       const langs = data.languages || {}
       setGermanLevel(langs.german || 'keine')
@@ -609,6 +568,7 @@ export default function Home() {
     const payload = {
       user_id: targetUserId,
       full_name: fullName,
+      email: user.email || null,
       title: title || null,
       location: location || null,
       experience_years: experience ? parseInt(experience) : null,
@@ -634,6 +594,8 @@ export default function Home() {
       },
 
       is_active: isActive,
+      newsletter: newsletter,
+      email_notifications: emailNotifications,
       last_candidate_update: new Date().toISOString(),
     }
     try {
@@ -682,340 +644,139 @@ export default function Home() {
   async function handleAuth(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setLoading(true)
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
       } else {
-        if (!phone.trim()) {
-          setError('Telefonnummer ist erforderlich')
-          return
-        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { role, phone: phone.trim(), linkedin: linkedin.trim() || null } }
+          options: {
+            data: {
+              role,
+              phone,
+              linkedin,
+            },
+          },
         })
         if (error) throw error
-        await notifyAdmin(
-          'Neue Anmeldung',
-          `${email} hat sich als ${role === 'recruiter' ? 'Recruiter' : 'Kandidat'} registriert.`
-        )
-        alert('Registriert! Bitte bestätige deine E-Mail und melde dich dann an.')
-        setIsLogin(true)
-        setShowAuth(false)
+        alert('Registrierung erfolgreich! Bitte bestätige deine E-Mail.')
       }
+      setShowAuth(false)
     } catch (err: any) {
       setError(err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
-  async function signOut() {
+  async function logout() {
     await supabase.auth.signOut()
     setUser(null)
-    setCandidates([])
     setProfile(null)
-    setRecruiterProfile(null)
-    setRequests([])
-    setCandidateRequests([])
-    setAdminRequests([])
-    setAdminViews([])
-    setAdminRecruiters([])
-    setNotifications([])
-    setUnreadCount(0)
-    setNeedsProfile(false)
-    setOnboardingStep(0)
-    setShowAuth(false)
+    setView('overview')
   }
 
-
-  function getCompleteness(c: any): number {
+  function getCompleteness(c: any) {
     let score = 0
     if (c.full_name) score += 10
-    if (c.title) score += 15
+    if (c.title) score += 10
     if (c.location) score += 10
-    if (c.experience_years != null) score += 10
+    if (c.experience_years) score += 10
     if (c.availability) score += 10
-    if (c.photo_url) score += 10
-    if (c.cv_url) score += 10
-    if (c.bio) score += 5
-    if (c.skills?.length > 0) score += 5
-    if (c.industries?.length > 0) score += 5
-    if (c.salary_ote_k || c.salary_desired_k) score += 5
+    if (c.skills?.length) score += 10
+    if (c.industries?.length) score += 10
+    if (c.bio) score += 10
+    if (c.photo_url) score += 5
+    if (c.cv_url) score += 5
     if (c.languages?.german && c.languages.german !== 'keine') score += 5
     if (c.languages?.english && c.languages.english !== 'keine') score += 5
-    return Math.min(score, 100)
-  }
-
-  function calculateScore(c: any): number {
-    // Completeness (0-100)
-    let completeness = 0
-    if (c.full_name) completeness += 15
-    if (c.title) completeness += 15
-    if (c.location) completeness += 10
-    if (c.experience_years != null) completeness += 10
-    if (c.availability) completeness += 10
-    if (c.photo_url) completeness += 10
-    if (c.cv_url) completeness += 10
-    if (c.bio) completeness += 5
-    if (c.skills && c.skills.length > 0) completeness += 5
-    if (c.industries && c.industries.length > 0) completeness += 5
-    if (c.salary_ote_k || c.salary_desired_k) completeness += 5
-
-    if (c.languages?.german && c.languages.german !== 'keine') completeness += 5
-    if (c.languages?.english && c.languages.english !== 'keine') completeness += 5
-
-    completeness = Math.min(completeness, 100)
-
-    // Recency (0-100) - based on last_candidate_update (only candidate self-updates) or created_at
-    const updated = new Date(c.last_candidate_update || c.created_at || Date.now())
-    const daysAgo = (Date.now() - updated.getTime()) / (1000 * 60 * 60 * 24)
-    const recency = Math.max(0, 100 - daysAgo * 5) // full score if <20 days, decays
-
-    // Availability (0-100)
-    const availMap: Record<string, number> = {
-      sofort: 100,
-      "2_wochen": 80,
-      "1_monat": 60,
-      "3_monate": 40,
-      datum: 20,
-    }
-    const availabilityScore = availMap[c.availability] || 30
-
-    // Certification bonus
-    const certBonus = c.is_certified ? 15 : 0
-
-    return (completeness * 0.40) + (recency * 0.25) + (availabilityScore * 0.20) + certBonus
-  }
-
-  function formatAvailability(c: any) {
-    if (c.availability === 'sofort') return 'Sofort'
-    if (c.availability === '2_wochen') return 'Innerhalb von 2 Wochen'
-    if (c.availability === '1_monat') return 'Innerhalb von 1 Monat'
-    if (c.availability === '3_monate') return 'Innerhalb von 3 Monaten'
-    if (c.availability === 'datum' && c.available_from) return new Date(c.available_from).toLocaleDateString('de-DE')
-    if (c.available_from) return new Date(c.available_from).toLocaleDateString('de-DE')
-    return null
+    return Math.min(100, score)
   }
 
   const filtered = candidates.filter(c => {
-    if (c.is_active === false && !(isAdmin && showInactive)) return false
+    if (!showInactive && c.is_active === false) return false
     if (filterExp && (c.experience_years || 0) < parseInt(filterExp)) return false
-    if (filterSalary && ((c.salary_ote_k || c.salary_desired_k) || 999) > parseInt(filterSalary)) return false
-    
-    // Flexible multi-value matching
-    if (filterLocation) {
-      const loc = (c.location || '').toLowerCase()
-      if (!loc.includes(filterLocation.toLowerCase())) return false
-    }
-    if (filterJob) {
-      const jobs = (c.title || '').toLowerCase()
-      if (!jobs.includes(filterJob.toLowerCase())) return false
-    }
-    if (filterSkill) {
-      const skills = (c.skills || []).join(' ').toLowerCase()
-      if (!skills.includes(filterSkill.toLowerCase())) return false
-    }
-    if (filterIndustry) {
-      const inds = (c.industries || []).join(' ').toLowerCase()
-      if (!inds.includes(filterIndustry.toLowerCase())) return false
-    }
+    if (filterSalary && (c.salary_base_k || 0) < parseInt(filterSalary)) return false
+    if (filterLocation && !c.location?.toLowerCase().includes(filterLocation.toLowerCase())) return false
+    if (filterSkill && !c.skills?.some((s: string) => s.toLowerCase().includes(filterSkill.toLowerCase()))) return false
+    if (filterJob && !c.title?.toLowerCase().includes(filterJob.toLowerCase())) return false
+    if (filterIndustry && !c.industries?.some((i: string) => i.toLowerCase().includes(filterIndustry.toLowerCase()))) return false
     return true
-  }).sort((a, b) => calculateScore(b) - calculateScore(a))
+  }).sort((a, b) => getCompleteness(b) - getCompleteness(a))
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500">Lade...</div>
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-        <header className="max-w-5xl mx-auto px-4 sm:px-6 py-6 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-blue-600 tracking-tight">Job Heroes</h1>
-          <button onClick={() => setShowAuth(true)} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium">Anmelden</button>
-        </header>
-
-        <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
-          <p className="text-blue-600 font-medium text-sm tracking-wide uppercase mb-3">Das umgekehrte Job-Portal</p>
-          <h2 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight leading-tight">Firmen kommen zu dir.<br />Nicht umgekehrt.</h2>
-          <p className="mt-5 text-lg text-slate-600 max-w-xl mx-auto">Erstelle dein Profil in wenigen Minuten. Recruiter suchen dich aktiv – du entscheidest, mit wem du sprichst.</p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={() => { setShowAuth(true); setIsLogin(false); setRole('candidate') }} className="bg-blue-600 hover:bg-blue-700 text-white px-7 py-3.5 rounded-xl font-medium transition shadow-sm">Kostenlos als Kandidat starten</button>
-            <button onClick={() => { setShowAuth(true); setIsLogin(false); setRole('recruiter') }} className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 px-7 py-3.5 rounded-xl font-medium transition">Als Recruiter suchen</button>
-          </div>
-        </section>
-
-        <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-12">
-          <h3 className="text-center text-sm font-medium text-slate-400 uppercase tracking-wider mb-6">So sieht ein Profil aus</h3>
-          <div className="grid md:grid-cols-2 gap-5 max-w-3xl mx-auto">
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-              <div className="flex gap-3">
-                <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">A</div>
-                <div>
-                  <p className="font-semibold">Alex M.</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">Sales Director</span>
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">Head of Sales</span>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">Hamburg</span>
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">Remote</span>
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">Berlin</span>
-              </div>
-              <p className="text-xs text-slate-500 mt-3">8 Jahre · Sofort verfügbar · OTE 140k</p>
-            </div>
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-              <div className="flex gap-3">
-                <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-semibold">L</div>
-                <div>
-                  <p className="font-semibold">Laura K.</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">Product Manager</span>
-                    <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">Product Owner</span>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">München</span>
-                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">Hybrid</span>
-              </div>
-              <p className="text-xs text-slate-500 mt-3">5 Jahre · In 1 Monat · OTE 95k</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="max-w-4xl mx-auto px-4 sm:px-6 pb-16">
-          <h3 className="text-center text-2xl font-semibold text-slate-900 mb-8">So funktioniert's</h3>
-          <div className="grid md:grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">1</div>
-              <p className="font-medium">Profil anlegen</p>
-              <p className="text-sm text-slate-600 mt-1">In 2 Minuten. Jobs, Orte, Verfügbarkeit – fertig.</p>
-            </div>
-            <div>
-              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">2</div>
-              <p className="font-medium">Recruiter finden dich</p>
-              <p className="text-sm text-slate-600 mt-1">Du wirst aktiv gesucht. Keine Bewerbungen mehr schreiben.</p>
-            </div>
-            <div>
-              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">3</div>
-              <p className="font-medium">Du entscheidest</p>
-              <p className="text-sm text-slate-600 mt-1">Anfragen kommen rein – du sagst Ja oder Nein.</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 text-center">
-          <div className="bg-blue-50 rounded-3xl p-8 sm:p-10">
-            <h3 className="text-2xl font-semibold text-slate-900">Bereit, gefunden zu werden?</h3>
-            <p className="mt-2 text-slate-600">Kostenlos. Kein Abo. Dein Profil bleibt unter deiner Kontrolle.</p>
-            <button onClick={() => { setShowAuth(true); setIsLogin(false); setRole('candidate') }} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-medium transition shadow-sm">
-              Jetzt kostenlos starten
-            </button>
-            <p className="mt-4 text-xs text-slate-500">Wer noch im Job ist, bleibt für normale Recruiter verdeckt.</p>
-          </div>
-        </section>
-
-        <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-20">
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-100">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center mb-4">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-              </div>
-              <h3 className="font-semibold text-lg">Für Kandidaten</h3>
-              <p className="text-sm text-slate-600 mt-2">Profil anlegen, CV hochladen, und auf Anfragen warten. Kein Bewerbungsstress.</p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-100">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-4">
-                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              </div>
-              <h3 className="font-semibold text-lg">Für Recruiter</h3>
-              <p className="text-sm text-slate-600 mt-2">Kandidaten durchsuchen, filtern und direkt anfragen. Du entscheidest, wen du ansprichst.</p>
-            </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-100">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center mb-4">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-              </div>
-              <h3 className="font-semibold text-lg">Privat & sicher</h3>
-              <p className="text-sm text-slate-600 mt-2">Wer noch im Job ist, bleibt verdeckt. Du bestimmst, wann du sichtbar bist.</p>
-            </div>
-          </div>
-        </section>
-
-        <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-8 mt-8 border-t border-slate-200 text-center text-sm text-slate-500">
-          <div className="flex justify-center gap-6">
-            <a href="/impressum" className="hover:text-slate-700">Impressum</a>
-            <a href="/datenschutz" className="hover:text-slate-700">Datenschutz</a>
-          </div>
-          <p className="mt-2">© {new Date().getFullYear()} Job Heroes</p>
-        </footer>
-
-        {showAuth && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={() => setShowAuth(false)}>
-            <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8" onClick={e => e.stopPropagation()}>
-              <h2 className="text-2xl font-bold text-slate-900 mb-1">{isLogin ? 'Anmelden' : 'Registrieren'}</h2>
-              <p className="text-sm text-slate-500 mb-6">Job Heroes</p>
-              {error && <div className="bg-red-50 text-red-700 p-3 rounded-xl mb-4 text-sm">{error}</div>}
-              <form onSubmit={handleAuth} className="space-y-4">
-                <input type="email" placeholder="E-Mail" value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
-                <input type="password" placeholder="Passwort" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
-                {!isLogin && (
-                  <>
-                    <input type="tel" placeholder="Telefonnummer *" value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" required />
-                    <input type="url" placeholder="LinkedIn (optional)" value={linkedin} onChange={e => setLinkedin(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                    <select value={role} onChange={e => setRole(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none">
-                      <option value="candidate">Ich bin Kandidat</option>
-                      <option value="recruiter">Ich bin Arbeitgeber / Recruiter</option>
-                    </select>
-                  </>
-                )}
-                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-xl font-medium transition">
-                  {isLogin ? 'Anmelden' : 'Registrieren'}
-                </button>
-              </form>
-              <button onClick={() => setIsLogin(!isLogin)} className="w-full mt-4 text-sm text-slate-500 hover:text-slate-700">
-                {isLogin ? 'Noch kein Konto? Registrieren' : 'Schon ein Konto? Anmelden'}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  const isRecruiter = (user.user_metadata?.role || 'candidate') === 'recruiter'
-  const currentStep = ONBOARDING_STEPS[onboardingStep]
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Lade...</div>
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <header className="flex justify-between items-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-blue-600 tracking-tight">Job Heroes</h1>
-          <div className="flex items-center gap-3 sm:gap-5">
-            <button onClick={() => { setView('notifications'); markAllRead() }} className="relative p-2 text-slate-600 hover:text-slate-900 transition">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">{unreadCount}</span>
-              )}
-            </button>
-            <span className="text-xs sm:text-sm text-slate-600 hidden md:inline">{user.email} · {isRecruiter ? 'Recruiter' : 'Kandidat'}{isAdmin ? ' · Admin' : ''}{isPremium && isRecruiter ? ' · Premium' : ''}</span>
-            <button onClick={signOut} className="bg-slate-200 hover:bg-slate-300 text-slate-800 px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition">Abmelden</button>
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">JH</div>
+            <h1 className="text-xl font-semibold text-slate-900">Job Heroes</h1>
           </div>
-        </header>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <>
+                <span className="text-sm text-slate-600 hidden sm:inline">{user.email}</span>
+                <button onClick={logout} className="text-sm text-slate-500 hover:text-slate-700">Abmelden</button>
+              </>
+            ) : (
+              <button onClick={() => setShowAuth(true)} className="bg-blue-600 text-white text-sm px-4 py-2 rounded-xl">Anmelden</button>
+            )}
+          </div>
+        </div>
+      </header>
 
-        <nav className="flex gap-2 mb-6 sm:mb-8 flex-wrap">
-          <button onClick={() => setView('overview')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'overview' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Übersicht</button>
-          <button onClick={() => setView('profile')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'profile' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>{isRecruiter ? 'Firmenprofil' : 'Mein Profil'}</button>
-          {!isRecruiter && (
-            <button onClick={() => setView('requests')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Anfragen</button>
-          )}
-          {isRecruiter && (
-            <button onClick={() => setView('requests')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Meine Anfragen</button>
-          )}
-          {isAdmin && (
-            <button onClick={() => setView('admin')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'admin' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Admin</button>
-          )}
-        </nav>
+      {showAuth && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4">{isLogin ? 'Anmelden' : 'Registrieren'}</h2>
+            <form onSubmit={handleAuth} className="space-y-4">
+              <input type="email" placeholder="E-Mail" value={email} onChange={e => setEmail(e.target.value)} required className="w-full p-3 border rounded-xl" />
+              <input type="password" placeholder="Passwort" value={password} onChange={e => setPassword(e.target.value)} required className="w-full p-3 border rounded-xl" />
+              {!isLogin && (
+                <>
+                  <select value={role} onChange={e => setRole(e.target.value)} className="w-full p-3 border rounded-xl">
+                    <option value="candidate">Ich bin Bewerber</option>
+                    <option value="recruiter">Ich bin Arbeitgeber / Recruiter</option>
+                  </select>
+                  <input placeholder="Telefonnummer" value={phone} onChange={e => setPhone(e.target.value)} className="w-full p-3 border rounded-xl" />
+                  <input placeholder="LinkedIn (optional)" value={linkedin} onChange={e => setLinkedin(e.target.value)} className="w-full p-3 border rounded-xl" />
+                </>
+              )}
+              {error && <p className="text-red-600 text-sm">{error}</p>}
+              <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-xl">{loading ? '...' : isLogin ? 'Anmelden' : 'Registrieren'}</button>
+              <button type="button" onClick={() => setIsLogin(!isLogin)} className="w-full text-sm text-slate-500">{isLogin ? 'Noch kein Konto? Registrieren' : 'Schon ein Konto? Anmelden'}</button>
+            </form>
+            <button onClick={() => setShowAuth(false)} className="mt-4 text-sm text-slate-400">Schließen</button>
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        {!user && (
+          <div className="text-center py-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Firmen kommen zu dir</h2>
+            <p className="text-lg text-slate-600 mb-8 max-w-2xl mx-auto">Erstelle dein Profil und lass Arbeitgeber dich finden – statt selbst zu suchen.</p>
+            <button onClick={() => setShowAuth(true)} className="bg-blue-600 text-white px-8 py-4 rounded-2xl text-lg font-medium">Profil anlegen</button>
+          </div>
+        )}
+
+        {user && (
+          <nav className="flex flex-wrap gap-2 mb-8">
+            <button onClick={() => setView('overview')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'overview' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Übersicht</button>
+            <button onClick={() => setView('profile')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'profile' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Mein Profil</button>
+            {(user.user_metadata?.role === 'recruiter' || isAdmin) && (
+              <button onClick={() => setView('requests')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'requests' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Meine Anfragen</button>
+            )}
+            {isAdmin && (
+              <button onClick={() => setView('admin')} className={`px-4 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition ${view === 'admin' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>Admin</button>
+            )}
+          </nav>
+        )}
 
         {view === 'notifications' && (
           <div>
@@ -1051,16 +812,12 @@ export default function Home() {
                     <div className="flex gap-1.5 flex-shrink-0">
                       <button
                         onClick={() => startAdminEdit(c)}
-                        className="text-xs px-3 py-1 rounded-lg font-medium bg-blue-100 text-blue-800"
-                      >
-                        Bearbeiten
-                      </button>
+                        className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg"
+                      >Bearbeiten</button>
                       <button
                         onClick={() => toggleCertified(c.id, !!c.is_certified)}
-                        className={`text-xs px-3 py-1 rounded-lg font-medium ${c.is_certified ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}
-                      >
-                        {c.is_certified ? 'Zertifiziert' : 'Zertifizieren'}
-                      </button>
+                        className={`text-xs px-2 py-1 rounded-lg ${c.is_certified ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100'}`}
+                      >{c.is_certified ? 'Zertifiziert' : 'Zertifizieren'}</button>
                     </div>
                   </div>
                 ))}
@@ -1071,47 +828,48 @@ export default function Home() {
               <h2 className="text-lg font-semibold mb-3">Recruiter & Premium</h2>
               <div className="space-y-1.5 max-h-64 overflow-y-auto border border-slate-200 rounded-xl bg-white">
                 {adminRecruiters.map(r => (
-                  <div key={r.id} className="px-3 py-2 flex items-center justify-between gap-3 border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                  <div key={r.id} className="px-3 py-2 flex items-center justify-between gap-3 border-b border-slate-100 last:border-0">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{r.company_name || 'Unbekannte Firma'}</p>
-                      <p className="text-xs text-slate-500 truncate">{r.searching_for || 'Keine Beschreibung'}</p>
+                      <p className="text-sm font-medium truncate">{r.company_name || 'Unbekannt'}</p>
+                      <p className="text-xs text-slate-500 truncate">{r.searching_for || 'Keine Suche'}</p>
                     </div>
                     <button
                       onClick={() => togglePremium(r.id, !!r.is_premium)}
-                      className={`text-xs px-3 py-1 rounded-lg font-medium flex-shrink-0 ${r.is_premium ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}
-                    >
-                      {r.is_premium ? 'Premium' : 'Standard'}
-                    </button>
+                      className={`text-xs px-3 py-1 rounded-lg ${r.is_premium ? 'bg-amber-100 text-amber-700' : 'bg-slate-100'}`}
+                    >{r.is_premium ? 'Premium' : 'Standard'}</button>
                   </div>
                 ))}
-                {adminRecruiters.length === 0 && <p className="text-sm text-slate-500 p-3">Noch keine Recruiter-Profile.</p>}
               </div>
             </div>
 
             <div>
               <h2 className="text-lg font-semibold mb-3">Kontaktanfragen</h2>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
+              <div className="space-y-2 max-h-96 overflow-y-auto border border-slate-200 rounded-xl bg-white p-2">
                 {adminRequests.map(r => (
-                  <div key={r.id} className="bg-white p-3 rounded-xl border border-slate-200 text-sm">
+                  <div key={r.id} className="p-3 border border-slate-100 rounded-lg">
                     <div className="flex justify-between items-start gap-2">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{r.company_name}</p>
-                        <p className="text-xs text-slate-600 truncate">→ {r.candidate_name}{r.candidate_title ? ` · ${r.candidate_title}` : ''}</p>
+                      <div>
+                        <p className="font-medium text-sm">{r.company_name}</p>
+                        <p className="text-xs text-slate-500">{r.candidate_name} · {r.candidate_title}</p>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${r.status === 'approved' ? 'bg-green-100 text-green-800' : r.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{r.status}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${r.status === 'approved' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{r.status}</span>
                     </div>
-                    {r.message && <p className="mt-1.5 text-xs text-slate-600 line-clamp-2">{r.message}</p>}
-                    {r.status === 'approved' && (
-                      <select value={r.process_status || 'open'} onChange={e => updateProcessStatus(r.id, e.target.value)} className="w-full mt-2 p-1.5 border border-slate-200 rounded text-xs">
-                        {PROCESS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                      </select>
-                    )}
-                    <div className="mt-2 flex gap-1.5 justify-end">
-                      {r.status !== 'approved' && (
-                        <button onClick={() => updateRequestStatus(r.id, 'approved')} className="bg-green-600 text-white text-xs px-2.5 py-1 rounded font-medium">Freigeben</button>
+                    {r.message && <p className="text-sm mt-2 text-slate-700">{r.message}</p>}
+                    <div className="flex gap-2 mt-3">
+                      {r.status === 'pending' && (
+                        <>
+                          <button onClick={async () => { await supabase.from('contact_requests').update({ status: 'approved' }).eq('id', r.id); await loadAdminRequests() }} className="text-xs bg-green-600 text-white px-3 py-1 rounded-lg">Freigeben</button>
+                          <button onClick={async () => { await supabase.from('contact_requests').update({ status: 'rejected' }).eq('id', r.id); await loadAdminRequests() }} className="text-xs bg-red-600 text-white px-3 py-1 rounded-lg">Ablehnen</button>
+                        </>
                       )}
-                      {r.status !== 'rejected' && (
-                        <button onClick={() => updateRequestStatus(r.id, 'rejected')} className="bg-red-600 text-white text-xs px-2.5 py-1 rounded font-medium">Ablehnen</button>
+                      {r.status === 'approved' && (
+                        <select
+                          value={r.process_status || 'open'}
+                          onChange={e => updateProcessStatus(r.id, e.target.value)}
+                          className="text-xs border rounded-lg px-2 py-1"
+                        >
+                          {PROCESS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
                       )}
                     </div>
                   </div>
@@ -1128,585 +886,169 @@ export default function Home() {
                   if (!subject) return
                   const body = window.prompt('Inhalt (HTML erlaubt):')
                   if (!body) return
-                  const { data: users } = await supabase.from('candidates').select('user_id, full_name').eq('newsletter', true)
-                  alert(`Newsletter wird an ${users?.length || 0} Abonnenten gesendet (Funktion muss eingerichtet sein).`)
-                  // Actual sending happens via Edge Function once Resend is set up
+
+                  const { data: users, error } = await supabase
+                    .from('candidates')
+                    .select('user_id, full_name, email')
+                    .eq('newsletter', true)
+
+                  if (error) {
+                    alert('Fehler beim Laden der Abonnenten: ' + error.message)
+                    return
+                  }
+
+                  const count = users?.length || 0
+                  if (count === 0) {
+                    alert('Keine Abonnenten gefunden. Stelle sicher, dass im Profil der Newsletter-Haken gesetzt und gespeichert ist.')
+                    return
+                  }
+
+                  if (!confirm(`Newsletter an ${count} Abonnenten senden?`)) return
+
+                  let sent = 0
+                  for (const u of users || []) {
+                    if (u.email) {
+                      await sendEmail(u.email, subject, body)
+                      sent++
+                    }
+                  }
+                  alert(`Newsletter an ${sent} von ${count} Abonnenten gesendet.`)
                 }}
                 className="bg-blue-600 text-white text-sm px-4 py-2 rounded-xl"
               >
                 Newsletter senden
               </button>
             </div>
-
-            <div>
-              <h2 className="text-lg font-semibold mb-3">Profil-Ansichten</h2>
-              <div className="space-y-1 max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-white">
-                {adminViews.slice(0, 20).map(v => (
-                  <div key={v.id} className="px-3 py-1.5 text-xs flex justify-between border-b border-slate-100 last:border-0">
-                    <span>Ansicht {v.id.slice(0, 8)}</span>
-                    <span className="text-slate-400">{new Date(v.viewed_at).toLocaleString()}</span>
-                  </div>
-                ))}
-                {adminViews.length === 0 && <p className="text-sm text-slate-500 p-3">Noch keine Ansichten.</p>}
-              </div>
-            </div>
           </div>
         )}
 
-        {view === 'requests' && !isRecruiter && (
+        {view === 'overview' && user && (
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-5 sm:mb-6 tracking-tight">Anfragen an dich</h2>
-            <div className="space-y-4">
-              {candidateRequests.map(r => (
-                <div key={r.id} className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
-                  <div className="flex gap-4">
-                    {r.logo_url && <img src={r.logo_url} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover" />}
-                    <div className="flex-1">
-                      <p className="font-semibold text-base sm:text-lg">{r.company_name || 'Unbekannte Firma'}</p>
-                      <p className="mt-2 text-sm text-slate-700">{r.message || '(keine Nachricht)'}</p>
-                      <p className="text-xs mt-3">Status: <span className={r.status === 'approved' ? 'text-green-600 font-medium' : r.status === 'rejected' ? 'text-red-600' : 'text-amber-600'}>{r.status}</span></p>
-                      {r.status === 'approved' && (
-                        <div className="mt-3">
-                          <label className="text-xs text-slate-500">Prozess-Status</label>
-                          <select value={r.process_status || 'open'} onChange={e => updateProcessStatus(r.id, e.target.value)} className="w-full mt-1 p-2 border border-slate-200 rounded-lg text-sm">
-                            {PROCESS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                          </select>
-                        </div>
-                      )}
-                      <p className="text-xs text-slate-400 mt-1">{new Date(r.created_at).toLocaleString()}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {candidateRequests.length === 0 && <p className="text-slate-500">Noch keine Anfragen an dich.</p>}
-            </div>
-          </div>
-        )}
-
-        {view === 'requests' && isRecruiter && (
-          <div>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-5 sm:mb-6 tracking-tight">Meine Anfragen</h2>
-            <div className="space-y-3">
-              {requests.map(r => (
-                <div key={r.id} className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-100">
-                  <p className="font-medium">Anfrage {r.id.slice(0, 8)}</p>
-                  <p className="text-sm text-slate-600 mt-1">{r.message || '(keine Nachricht)'}</p>
-                  <p className="text-xs mt-2">Status: <span className={r.status === 'approved' ? 'text-green-600' : r.status === 'rejected' ? 'text-red-600' : 'text-amber-600'}>{r.status}</span></p>
-                  {r.status === 'approved' && (
-                    <p className="text-xs mt-1 text-slate-500">Prozess: {PROCESS_OPTIONS.find(o => o.value === (r.process_status || 'open'))?.label}</p>
-                  )}
-                </div>
-              ))}
-              {requests.length === 0 && <p className="text-slate-500">Noch keine Anfragen.</p>}
-            </div>
-          </div>
-        )}
-
-        {view === 'overview' && (
-          <>
-            <div className="mb-6 sm:mb-8 bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 shadow-sm">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                <select value={filterJob} onChange={e => setFilterJob(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">Job / Titel</option>
-                  {JOBS.map(j => <option key={j} value={j}>{j}</option>)}
-                </select>
-                <select value={filterIndustry} onChange={e => setFilterIndustry(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">Branche</option>
-                  {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-                </select>
-                <input placeholder="Skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                <input placeholder="Min. Erfahrung (Jahre)" value={filterExp} onChange={e => setFilterExp(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                <input placeholder="Max. Gehalt (k€)" value={filterSalary} onChange={e => setFilterSalary(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">Ort</option>
-                  {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                </select>
-              </div>
+            <div className="flex flex-wrap gap-3 mb-6">
+              <input placeholder="Erfahrung min. Jahre" value={filterExp} onChange={e => setFilterExp(e.target.value)} className="p-2.5 border rounded-xl text-sm w-40" />
+              <input placeholder="Gehalt min. (k)" value={filterSalary} onChange={e => setFilterSalary(e.target.value)} className="p-2.5 border rounded-xl text-sm w-40" />
+              <input placeholder="Ort" value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="p-2.5 border rounded-xl text-sm w-40" />
+              <input placeholder="Skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} className="p-2.5 border rounded-xl text-sm w-40" />
+              <input placeholder="Job / Titel" value={filterJob} onChange={e => setFilterJob(e.target.value)} className="p-2.5 border rounded-xl text-sm w-40" />
+              <input placeholder="Branche" value={filterIndustry} onChange={e => setFilterIndustry(e.target.value)} className="p-2.5 border rounded-xl text-sm w-40" />
               {isAdmin && (
-                <div className="mt-4 flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="showInactive"
-                    checked={showInactive}
-                    onChange={e => setShowInactive(e.target.checked)}
-                    className="rounded"
-                  />
-                  <label htmlFor="showInactive" className="text-sm text-slate-700 cursor-pointer">
-                    Inaktive Profile anzeigen
-                  </label>
-                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
+                  Inaktive zeigen
+                </label>
               )}
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-semibold mb-5 sm:mb-6 tracking-tight">Kandidaten ({filtered.length})</h2>
-            <div className="space-y-4 sm:space-y-5">
-              {filtered.map(c => {
-                const isHidden = c.currently_employed && !isPremium
-                const avail = formatAvailability(c)
-                return (
-                  <div key={c.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-all relative" onMouseEnter={() => logView(c.id)}>
-                    {isHidden && (
-                      <div className="absolute inset-0 bg-white/85 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
-                        <div className="text-center px-6">
-                          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
-                            <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                          </div>
-                          <p className="font-semibold text-slate-800">Aktuell noch im Job</p>
-                          <p className="text-sm text-slate-500 mt-1">Premium erforderlich</p>
-                        </div>
+            <div className="grid gap-4">
+              {filtered.map(c => (
+                <div key={c.id} className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold text-lg">{c.full_name || 'Unbekannt'} {c.is_certified && <span className="text-emerald-600 text-sm">✓</span>}</h3>
+                        <p className="text-slate-600">{c.title || 'Kein Titel'}</p>
                       </div>
-                    )}
-                    <div className={`p-5 sm:p-6 ${isHidden ? 'filter blur-[2px]' : ''}`}>
-                      <div className="flex gap-4">
-                        {c.photo_url ? (
-                          <img src={c.photo_url} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0 ring-1 ring-slate-200" />
-                        ) : (
-                          <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-xs flex-shrink-0">Foto</div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                            {isHidden ? '••••••••' : (c.full_name || 'Unbekannt')}
-                            {c.is_certified && <span className="text-emerald-600 text-sm" title="Zertifiziert">✓</span>}
-                            {c.is_active === false && <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">Inaktiv</span>}
-                          </h3>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            {(c.title || '').split(',').map((t: string) => t.trim()).filter(Boolean).slice(0, 4).map((t: string) => (
-                              <span key={t} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">{t}</span>
-                            ))}
-                            {!(c.title || '').trim() && <span className="text-slate-400 text-sm">Kein Titel</span>}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 space-y-3">
-                        {c.location && (
-                          <div className="flex">
-                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Orte</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {isHidden ? <span className="text-sm">••••</span> : (c.location || '').split(',').map((l: string) => l.trim()).filter(Boolean).slice(0, 5).map((l: string) => (
-                                <span key={l} className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">{l}</span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {c.experience_years != null && (
-                          <div className="flex">
-                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Erfahrung</span>
-                            <span className="text-sm text-slate-800">{c.experience_years} Jahre</span>
-                          </div>
-                        )}
-                        {avail && (
-                          <div className="flex">
-                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Verfügbar</span>
-                            <span className="text-sm text-slate-800">{avail}</span>
-                          </div>
-                        )}
-
-                        {c.languages && (
-                          <div className="flex">
-                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Sprachen</span>
-                            <span className="text-sm text-slate-800">
-                              {(() => {
-                                const parts: string[] = []
-                                const de = LANGUAGE_LEVELS.find(l => l.value === c.languages?.german)?.label
-                                const en = LANGUAGE_LEVELS.find(l => l.value === c.languages?.english)?.label
-                                if (de) parts.push(`DE (${de})`)
-                                if (en) parts.push(`EN (${en})`)
-                                if (c.languages?.others?.length) {
-                                  c.languages.others.forEach((o: any) => {
-                                    const lvl = LANGUAGE_LEVELS.find(l => l.value === o.level)?.label || o.level
-                                    if (o.name) parts.push(`${o.name} (${lvl})`)
-                                  })
-                                }
-                                return parts.join(' · ')
-                              })()}
-                            </span>
-                          </div>
-                        )}
-
-                        {(c.salary_ote_k || c.salary_desired_k) && (
-                          <div className="flex">
-                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Gehalt</span>
-                            <span className="text-sm text-slate-800">
-                              OTE {c.salary_ote_k || c.salary_desired_k}k
-                              {c.salary_base_k && ` (Base ${c.salary_base_k}k)`}
-                              {c.salary_negotiable && <span className="text-slate-500"> · verhandelbar</span>}
-                            </span>
-                          </div>
-                        )}
-                        {isAdmin && c.phone && (
-                          <div className="flex">
-                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Telefon</span>
-                            <span className="text-sm text-slate-800">{c.phone}</span>
-                          </div>
-                        )}
-                        {isPremium && c.linkedin && (
-                          <div className="flex">
-                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">LinkedIn</span>
-                            <a href={c.linkedin} target="_blank" className="text-sm text-blue-600 underline truncate">{c.linkedin}</a>
-                          </div>
-                        )}
-                      </div>
-
-                      {c.bio && (
-                        <div className="mt-5">
-                          <p className="text-xs uppercase tracking-wide text-slate-400 mb-1">Über mich</p>
-                          <p className="text-sm text-slate-700 leading-relaxed">{isHidden ? '••••••••••••••••••••' : c.bio}</p>
-                        </div>
-                      )}
-
-                      {(c.skills?.length > 0 || c.industries?.length > 0) && (
-                        <div className="mt-5 space-y-3">
-                          {c.skills?.length > 0 && (
-                            <div>
-                              <p className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">Skills</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {c.skills.slice(0, 5).map((s: string) => (
-                                  <span key={s} className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">{s}</span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {c.industries?.length > 0 && (
-                            <div>
-                              <p className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">Branchen</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {c.industries.slice(0, 4).map((i: string) => (
-                                  <span key={i} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs rounded-full font-medium">{i}</span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-3">
-                        {c.cv_url && !isHidden && (
-                          <a href={c.cv_url} target="_blank" className="text-blue-600 text-sm font-medium hover:underline" onClick={() => logView(c.id)}>
-                            Lebenslauf →
-                          </a>
-                        )}
-                        {isRecruiter && !isHidden && (
-                          <button
-                            onClick={() => requestContact(c.id)}
-                            className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm px-5 py-2.5 rounded-xl font-medium transition"
-                          >
-                            Anfragen
-                          </button>
-                        )}
-                      </div>
+                      <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{getCompleteness(c)}%</span>
                     </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {(c.skills || []).slice(0, 5).map((s: string) => (
+                        <span key={s} className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">{s}</span>
+                      ))}
+                      {(c.industries || []).slice(0, 3).map((i: string) => (
+                        <span key={i} className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">{i}</span>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-sm text-slate-500">{c.location} · {c.experience_years || 0} Jahre · {c.availability}</p>
                   </div>
-                )
-              })}
-              {filtered.length === 0 && <p className="text-slate-500 text-center py-12">Keine Kandidaten gefunden.</p>}
-            </div>
-          </>
-        )}
-
-        {view === 'profile' && isRecruiter && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-8 max-w-2xl">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-5 sm:mb-6 tracking-tight">Firmenprofil</h2>
-            {msg && <div className={`p-3 rounded-xl mb-6 text-sm ${msg.includes('Fehler') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-6 mb-8">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo" className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border border-slate-200" />
-              ) : (
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">Logo</div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Firmenlogo</label>
-                <input type="file" accept="image/*" onChange={uploadLogo} disabled={uploadingLogo} className="text-sm text-slate-600" />
-                {uploadingLogo && <p className="text-xs text-slate-500 mt-1">Lade hoch...</p>}
-              </div>
-            </div>
-
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Firmenname</label>
-                <input value={companyName} onChange={e => setCompanyName(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="z.B. allO Technology GmbH" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Wen sucht ihr aktuell?</label>
-                <textarea value={searchingFor} onChange={e => setSearchingFor(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" rows={4} placeholder="z.B. Senior Sales Manager für DACH..." />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Telefonnummer</label>
-                <input value={recruiterPhone} onChange={e => setRecruiterPhone(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">LinkedIn (optional)</label>
-                <input value={recruiterLinkedin} onChange={e => setRecruiterLinkedin(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <button onClick={saveRecruiterProfile} disabled={saving} className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium disabled:opacity-50 transition">
-                {saving ? 'Speichere...' : 'Firmenprofil speichern'}
-              </button>
+                  {c.photo_url && <img src={c.photo_url} alt="" className="w-20 h-20 rounded-xl object-cover" />}
+                  {(user.user_metadata?.role === 'recruiter' || isAdmin) && (
+                    <button onClick={() => requestContact(c.id)} className="self-start bg-blue-600 text-white text-sm px-4 py-2 rounded-xl">Kontakt anfragen</button>
+                  )}
+                </div>
+              ))}
+              {filtered.length === 0 && <p className="text-slate-500">Keine Kandidaten gefunden.</p>}
             </div>
           </div>
         )}
 
-        {view === 'profile' && !isRecruiter && needsProfile && (
-          <div className="max-w-md mx-auto">
-            <div className="mb-6 flex items-center justify-between text-sm text-slate-500">
-              <span>Schritt {onboardingStep + 1} von {ONBOARDING_STEPS.length}</span>
-              <span>{Math.round(((onboardingStep + 1) / ONBOARDING_STEPS.length) * 100)}%</span>
-            </div>
-            <div className="h-1.5 bg-slate-200 rounded-full mb-8">
-              <div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${((onboardingStep + 1) / ONBOARDING_STEPS.length) * 100}%` }} />
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
-              {currentStep === 'name' && (
-                <>
-                  <h2 className="text-xl font-semibold mb-2">Wie heißt du?</h2>
-                  <p className="text-sm text-slate-500 mb-6">Dein Name wird im Profil angezeigt.</p>
-                  <input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Vor- und Nachname" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                </>
-              )}
-              {currentStep === 'title' && (
-                <>
-                  <h2 className="text-xl font-semibold mb-2">Welche Jobs suchst du?</h2>
-                  <p className="text-sm text-slate-500 mb-6">Mehrere möglich, kommagetrennt.</p>
-                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. Sales Director, Account Executive" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {JOBS.slice(0, 10).map(j => (
-                      <button key={j} type="button" onClick={() => setTitle(prev => prev ? `${prev}, ${j}` : j)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">
-                        + {j}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              {currentStep === 'location' && (
-                <>
-                  <h2 className="text-xl font-semibold mb-2">Wo kannst du arbeiten?</h2>
-                  <p className="text-sm text-slate-500 mb-6">Mehrere Orte möglich, kommagetrennt.</p>
-                  <input value={location} onChange={e => setLocation(e.target.value)} placeholder="z.B. Hamburg, Berlin, Remote" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {LOCATIONS.slice(0, 12).map(l => (
-                      <button key={l} type="button" onClick={() => setLocation(prev => prev ? `${prev}, ${l}` : l)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">
-                        + {l}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-              {currentStep === 'experience' && (
-                <>
-                  <h2 className="text-xl font-semibold mb-2">Wie viele Jahre Berufserfahrung hast du?</h2>
-                  <input type="number" value={experience} onChange={e => setExperience(e.target.value)} placeholder="z.B. 5" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-4" />
-                </>
-              )}
-              {currentStep === 'availability' && (
-                <>
-                  <h2 className="text-xl font-semibold mb-2">Wann bist du verfügbar?</h2>
-                  <select value={availability} onChange={e => setAvailability(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-4">
-                    {AVAILABILITY_OPTIONS.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                  {availability === 'datum' && (
-                    <input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-3" />
-                  )}
-                </>
-              )}
-              {currentStep === 'employed' && (
-                <>
-                  <h2 className="text-xl font-semibold mb-2">Bist du aktuell noch im Job?</h2>
-                  <p className="text-sm text-slate-500 mb-6">Wenn ja, wird dein Profil für normale Recruiter verdeckt angezeigt.</p>
-                  <div className="space-y-3">
-                    <button type="button" onClick={() => setEmployed(false)} className={`w-full p-4 rounded-xl border text-left ${!employed ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>Nein, ich bin frei</button>
-                    <button type="button" onClick={() => setEmployed(true)} className={`w-full p-4 rounded-xl border text-left ${employed ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>Ja, ich bin noch angestellt</button>
-                  </div>
-                  {employed && (
-                    <input value={currentCompany} onChange={e => setCurrentCompany(e.target.value)} placeholder="Aktueller Arbeitgeber (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-4" />
-                  )}
-                </>
-              )}
-
-              {currentStep === 'languages' && (
-                <>
-                  <h2 className="text-xl font-semibold mb-2">Sprachkenntnisse</h2>
-                  <p className="text-sm text-slate-500 mb-6">Deutsch und Englisch sind verpflichtend.</p>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Deutsch</label>
-                      <select value={germanLevel} onChange={e => setGermanLevel(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                        {LANGUAGE_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Englisch</label>
-                      <select value={englishLevel} onChange={e => setEnglishLevel(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                        {LANGUAGE_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {currentStep === 'optional' && (
-                <>
-                  <h2 className="text-xl font-semibold mb-2">Noch etwas hinzufügen?</h2>
-                  <p className="text-sm text-slate-500 mb-6">Alles optional – du kannst es später ergänzen.</p>
-                  <div className="space-y-4">
-                    <div className="space-y-3">
-                      <input type="number" value={salaryOte} onChange={e => setSalaryOte(e.target.value)} placeholder="OTE in 1.000 € (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                      <input type="number" value={salaryBase} onChange={e => setSalaryBase(e.target.value)} placeholder="Base / Fixum in 1.000 € (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                    <input value={skills} onChange={e => setSkills(e.target.value)} placeholder="Skills, kommagetrennt (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                    <input value={industries} onChange={e => setIndustries(e.target.value)} placeholder="Branchen, kommagetrennt (optional)" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                    <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Kurze Bio (optional)" rows={3} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
-                </>
-              )}
-
-              <div className="flex gap-3 mt-8">
-                {onboardingStep > 0 && (
-                  <button type="button" onClick={prevStep} className="px-5 py-3 rounded-xl border border-slate-200 text-slate-700 font-medium">Zurück</button>
-                )}
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  disabled={saving || (currentStep === 'name' && !fullName.trim())}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-medium disabled:opacity-50"
-                >
-                  {onboardingStep === ONBOARDING_STEPS.length - 1 ? (saving ? 'Speichere...' : 'Fertig') : 'Weiter'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {view === 'profile' && !isRecruiter && !needsProfile && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-8 max-w-2xl">
-            <div className="flex justify-between items-start mb-5">
+        {view === 'profile' && user && (
+          <div className="max-w-2xl">
+            <h2 className="text-2xl font-semibold mb-6">{adminEditing ? 'Profil bearbeiten (Admin)' : 'Mein Profil'}</h2>
+            <div className="space-y-5 bg-white p-6 rounded-2xl border border-slate-200">
               <div>
-                <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{adminEditing ? `Profil bearbeiten: ${adminEditing.full_name || 'Unbekannt'}` : 'Mein Profil'}</h2>
-                {!adminEditing && profile && (
-                  <div className="mt-2">
-                    <div className="flex justify-between text-xs text-slate-500 mb-1">
-                      <span>Profil-Vollständigkeit</span>
-                      <span>{getCompleteness(profile)}%</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-200 rounded-full">
-                      <div className="h-full bg-blue-600 rounded-full" style={{ width: `${getCompleteness(profile)}%` }} />
-                    </div>
-                  </div>
-                )}
-              </div>
-              <button onClick={toggleActive} className={`text-sm px-4 py-2 rounded-xl font-medium ${isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
-                {isActive ? 'Aktiv (auf Suche)' : 'Inaktiv'}
-              </button>
-            </div>
-            {msg && <div className={`p-3 rounded-xl mb-6 text-sm ${msg.includes('Fehler') || msg.includes('❌') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-6 mb-8">
-              {photoUrl ? (
-                <img src={photoUrl} alt="Profil" className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border border-slate-200" />
-              ) : (
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">Foto</div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Profilbild (optional)</label>
-                <input type="file" accept="image/*" onChange={uploadPhoto} disabled={uploadingPhoto} className="text-sm text-slate-600" />
-                {uploadingPhoto && <p className="text-xs text-slate-500 mt-1">Lade hoch...</p>}
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Lebenslauf (PDF, optional)</label>
-              <input type="file" accept="application/pdf" onChange={uploadCv} disabled={uploadingCv} className="text-sm text-slate-600" />
-              {uploadingCv && <p className="text-xs text-slate-500 mt-1">Lade CV hoch...</p>}
-              {cvUrl && (
-                <div className="mt-2 flex items-center gap-4">
-                  <a href={cvUrl} target="_blank" className="text-blue-600 underline text-sm">Aktueller CV ansehen</a>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!confirm('CV wirklich löschen?')) return
-                      setCvUrl('')
-                      setMsg('CV entfernt (bitte Profil speichern)')
-                    }}
-                    className="text-red-600 text-sm underline"
-                  >
-                    Löschen
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Vollständiger Name</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
                 <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Gesuchte Jobs (kommagetrennt)</label>
-                <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="z.B. Sales Director, Account Executive, Country Manager" />
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {JOBS.slice(0, 10).map(j => (
-                    <button key={j} type="button" onClick={() => setTitle(prev => prev ? `${prev}, ${j}` : j)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">
-                      + {j}
-                    </button>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Aktuelle / Wunsch-Position(en)</label>
+                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. Sales Director, Account Executive" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {JOBS.slice(0, 8).map(j => (
+                    <button key={j} type="button" onClick={() => setTitle(prev => prev ? prev + ', ' + j : j)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">+ {j}</button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Orte (kommagetrennt)</label>
-                <input value={location} onChange={e => setLocation(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="z.B. Hamburg, Berlin, Remote" />
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {LOCATIONS.slice(0, 12).map(l => (
-                    <button key={l} type="button" onClick={() => setLocation(prev => prev ? `${prev}, ${l}` : l)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">
-                      + {l}
-                    </button>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Ort(e)</label>
+                <input value={location} onChange={e => setLocation(e.target.value)} placeholder="z.B. Hamburg, Remote, Berlin" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {LOCATIONS.slice(0, 8).map(l => (
+                    <button key={l} type="button" onClick={() => setLocation(prev => prev ? prev + ', ' + l : l)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">+ {l}</button>
                   ))}
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Jahre Berufserfahrung</label>
-                <input type="number" value={experience} onChange={e => setExperience(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Verfügbarkeit</label>
-                <select value={availability} onChange={e => setAvailability(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                  {AVAILABILITY_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Berufserfahrung (Jahre)</label>
+                  <input type="number" value={experience} onChange={e => setExperience(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Verfügbarkeit</label>
+                  <select value={availability} onChange={e => setAvailability(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                    {AVAILABILITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
               </div>
               {availability === 'datum' && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Ab Datum</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Verfügbar ab</label>
                   <input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               )}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">OTE (in 1.000 €, optional)</label>
-                <input type="number" value={salaryOte} onChange={e => setSalaryOte(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="120" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Base / Fixum (in 1.000 €, optional)</label>
-                <input type="number" value={salaryBase} onChange={e => setSalaryBase(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="80" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Wunschgehalt Base (k€)</label>
+                  <input type="number" value={salaryBase} onChange={e => setSalaryBase(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">OTE (k€, optional)</label>
+                  <input type="number" value={salaryOte} onChange={e => setSalaryOte(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
               </div>
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={negotiable} onChange={e => setNegotiable(e.target.checked)} className="rounded" />
-                <span className="text-sm text-slate-700">verhandelbar</span>
+                <input type="checkbox" checked={negotiable} onChange={e => setNegotiable(e.target.checked)} />
+                <span className="text-sm">Gehalt verhandelbar</span>
               </label>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Aktueller Arbeitgeber (optional)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Aktuelle Firma (optional)</label>
                 <input value={currentCompany} onChange={e => setCurrentCompany(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={employed} onChange={e => setEmployed(e.target.checked)} className="rounded" />
-                <span className="text-sm text-slate-700">Ich bin aktuell noch im Job</span>
+                <input type="checkbox" checked={employed} onChange={e => setEmployed(e.target.checked)} />
+                <span className="text-sm">Aktuell angestellt</span>
               </label>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Bio (optional)</label>
-                <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" rows={3} />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Bio</label>
+                <textarea value={bio} onChange={e => setBio(e.target.value)} rows={4} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
-
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Skills (kommagetrennt)</label>
+                <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Branchen (kommagetrennt)</label>
+                <input value={industries} onChange={e => setIndustries(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Deutsch</label>
                 <select value={germanLevel} onChange={e => setGermanLevel(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
@@ -1720,41 +1062,34 @@ export default function Home() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Weitere Sprachen (optional)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Weitere Sprachen</label>
                 {otherLanguages.map((lang, idx) => (
                   <div key={idx} className="flex gap-2 mb-2">
                     <input value={lang.name} onChange={e => {
                       const next = [...otherLanguages]
                       next[idx].name = e.target.value
                       setOtherLanguages(next)
-                    }} placeholder="Sprache" className="flex-1 p-3 border border-slate-200 rounded-xl" />
+                    }} placeholder="Sprache" className="flex-1 p-3 border rounded-xl" />
                     <select value={lang.level} onChange={e => {
                       const next = [...otherLanguages]
                       next[idx].level = e.target.value
                       setOtherLanguages(next)
-                    }} className="w-40 p-3 border border-slate-200 rounded-xl">
+                    }} className="p-3 border rounded-xl">
                       {LANGUAGE_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                     </select>
-                    <button type="button" onClick={() => setOtherLanguages(otherLanguages.filter((_, i) => i !== idx))} className="text-red-500 px-2">×</button>
                   </div>
                 ))}
-                <button type="button" onClick={() => setOtherLanguages([...otherLanguages, { name: '', level: 'A1' }])} className="text-sm text-blue-600 mt-1">+ Sprache hinzufügen</button>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Skills (kommagetrennt, optional)</label>
-                <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="React, TypeScript, Sales..." />
+                <button type="button" onClick={() => setOtherLanguages([...otherLanguages, { name: '', level: 'B1' }])} className="text-sm text-blue-600">+ Sprache</button>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Branchen (optional)</label>
-                <input value={industries} onChange={e => setIndustries(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="z.B. SaaS, FinTech, Healthcare..." />
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {INDUSTRIES.slice(0, 8).map(i => (
-                    <button key={i} type="button" onClick={() => setIndustries(prev => prev ? `${prev}, ${i}` : i)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">
-                      + {i}
-                    </button>
-                  ))}
-                </div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Foto</label>
+                <input type="file" accept="image/*" onChange={uploadPhoto} disabled={uploadingPhoto} className="text-sm" />
+                {photoUrl && <img src={photoUrl} alt="" className="mt-2 w-24 h-24 rounded-xl object-cover" />}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">CV (PDF)</label>
+                <input type="file" accept=".pdf" onChange={uploadCv} disabled={uploadingCv} className="text-sm" />
+                {cvUrl && <a href={cvUrl} target="_blank" className="text-sm text-blue-600 ml-2">CV ansehen</a>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Telefonnummer</label>
@@ -1780,7 +1115,7 @@ export default function Home() {
             </div>
           </div>
         )}
-      </div>
+      </main>
       <footer className="max-w-5xl mx-auto px-4 sm:px-6 py-8 border-t border-slate-200 text-center text-sm text-slate-500">
         <div className="flex justify-center gap-6">
           <a href="/impressum" className="hover:text-slate-700">Impressum</a>
