@@ -1285,15 +1285,15 @@ export default function Home() {
               {currentStep === 'location' && (
                 <>
                   <h2 className="text-xl font-semibold mb-2">Wo kannst du arbeiten?</h2>
-                  <p className="text-sm text-slate-500 mb-6">Stadt, Remote, Hybrid...</p>
-                  <select value={LOCATIONS.includes(location) ? location : ''} onChange={e => setLocation(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Auswählen...</option>
-                    {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                    <option value="custom">Anderer Ort...</option>
-                  </select>
-                  {(!LOCATIONS.includes(location) || location === 'custom') && (
-                    <input value={location === 'custom' ? '' : location} onChange={e => setLocation(e.target.value)} placeholder="Ort eingeben" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-3" />
-                  )}
+                  <p className="text-sm text-slate-500 mb-6">Mehrere Orte möglich, kommagetrennt.</p>
+                  <input value={location} onChange={e => setLocation(e.target.value)} placeholder="z.B. Hamburg, Berlin, Remote" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {LOCATIONS.slice(0, 12).map(l => (
+                      <button key={l} type="button" onClick={() => setLocation(prev => prev ? `${prev}, ${l}` : l)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">
+                        + {l}
+                      </button>
+                    ))}
+                  </div>
                 </>
               )}
               {currentStep === 'experience' && (
@@ -1445,15 +1445,15 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Ort</label>
-                <select value={LOCATIONS.includes(location) ? location : 'custom'} onChange={e => setLocation(e.target.value === 'custom' ? '' : e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">Auswählen...</option>
-                  {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                  <option value="custom">Anderer Ort...</option>
-                </select>
-                {(!LOCATIONS.includes(location) || location === '') && (
-                  <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Ort eingeben" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-2" />
-                )}
+                <label className="block text-sm font-medium text-slate-700 mb-1">Orte (kommagetrennt)</label>
+                <input value={location} onChange={e => setLocation(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="z.B. Hamburg, Berlin, Remote" />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {LOCATIONS.slice(0, 12).map(l => (
+                    <button key={l} type="button" onClick={() => setLocation(prev => prev ? `${prev}, ${l}` : l)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">
+                      + {l}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Jahre Berufserfahrung</label>
