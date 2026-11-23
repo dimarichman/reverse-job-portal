@@ -11,6 +11,18 @@ const AVAILABILITY_OPTIONS = [
   { value: 'datum', label: 'Ab bestimmtem Datum' },
 ]
 
+
+const LANGUAGE_LEVELS = [
+  { value: 'keine', label: 'Keine Kenntnisse' },
+  { value: 'A1', label: 'A1' },
+  { value: 'A2', label: 'A2' },
+  { value: 'B1', label: 'B1' },
+  { value: 'B2', label: 'B2' },
+  { value: 'C1', label: 'C1' },
+  { value: 'C2', label: 'C2' },
+  { value: 'native', label: 'Muttersprache' },
+]
+
 const PROCESS_OPTIONS = [
   { value: 'open', label: 'Offen' },
   { value: 'in_process', label: 'Im Prozess' },
@@ -18,7 +30,7 @@ const PROCESS_OPTIONS = [
   { value: 'rejected', label: 'Abgelehnt' },
 ]
 
-const ONBOARDING_STEPS = ['name', 'title', 'location', 'experience', 'availability', 'employed', 'optional']
+const ONBOARDING_STEPS = ['name', 'title', 'location', 'experience', 'availability', 'employed', 'languages', 'optional']
 const ADMIN_EMAIL = 'dimarachmann@aol.com'
 
 export default function Home() {
@@ -76,6 +88,10 @@ export default function Home() {
   const [candidateLinkedin, setCandidateLinkedin] = useState('')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [uploadingCv, setUploadingCv] = useState(false)
+
+  const [germanLevel, setGermanLevel] = useState('keine')
+  const [englishLevel, setEnglishLevel] = useState('keine')
+  const [otherLanguages, setOtherLanguages] = useState<{name: string, level: string}[]>([])
 
   // Recruiter fields
   const [companyName, setCompanyName] = useState('')
@@ -411,6 +427,12 @@ export default function Home() {
       setCandidatePhone(data.phone || '')
       setCandidateLinkedin(data.linkedin || '')
       setIsActive(data.is_active !== false)
+
+      const langs = data.languages || {}
+      setGermanLevel(langs.german || 'keine')
+      setEnglishLevel(langs.english || 'keine')
+      setOtherLanguages(langs.others || [])
+
       setNeedsProfile(false)
       return true
     }
@@ -530,6 +552,13 @@ export default function Home() {
       cv_url: cvUrl || null,
       phone: candidatePhone || null,
       linkedin: candidateLinkedin || null,
+
+      languages: {
+        german: germanLevel || 'keine',
+        english: englishLevel || 'keine',
+        others: otherLanguages.filter(l => l.name.trim()),
+      },
+
       is_active: isActive,
       last_candidate_update: new Date().toISOString(),
     }
@@ -630,6 +659,10 @@ export default function Home() {
     if (c.skills && c.skills.length > 0) completeness += 5
     if (c.industries && c.industries.length > 0) completeness += 5
     if (c.salary_desired_k) completeness += 5
+
+    if (c.languages?.german && c.languages.german !== 'keine') completeness += 5
+    if (c.languages?.english && c.languages.english !== 'keine') completeness += 5
+
     completeness = Math.min(completeness, 100)
 
     // Recency (0-100) - based on last_candidate_update (only candidate self-updates) or created_at
@@ -1034,6 +1067,17 @@ export default function Home() {
                             <span className="text-sm text-slate-800">{avail}</span>
                           </div>
                         )}
+
+                        {c.languages && (
+                          <div className="flex">
+                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Sprachen</span>
+                            <span className="text-sm text-slate-800">
+                              DE: {LANGUAGE_LEVELS.find(l => l.value === c.languages?.german)?.label || c.languages?.german || '–'} · EN: {LANGUAGE_LEVELS.find(l => l.value === c.languages?.english)?.label || c.languages?.english || '–'}
+                              {c.languages?.others?.length > 0 && ` · ${c.languages.others.map((o: any) => `${o.name} (${LANGUAGE_LEVELS.find(l => l.value === o.level)?.label || o.level})`).join(', ')}`}
+                            </span>
+                          </div>
+                        )}
+
                         {c.salary_desired_k && (
                           <div className="flex">
                             <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Wunschgehalt</span>
@@ -1216,6 +1260,28 @@ export default function Home() {
                   )}
                 </>
               )}
+
+              {currentStep === 'languages' && (
+                <>
+                  <h2 className="text-xl font-semibold mb-2">Sprachkenntnisse</h2>
+                  <p className="text-sm text-slate-500 mb-6">Deutsch und Englisch sind verpflichtend.</p>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Deutsch</label>
+                      <select value={germanLevel} onChange={e => setGermanLevel(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                        {LANGUAGE_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Englisch</label>
+                      <select value={englishLevel} onChange={e => setEnglishLevel(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                        {LANGUAGE_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
               {currentStep === 'optional' && (
                 <>
                   <h2 className="text-xl font-semibold mb-2">Noch etwas hinzufügen?</h2>
@@ -1346,8 +1412,42 @@ export default function Home() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Bio (optional)</label>
                 <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" rows={3} />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Skills (kommagetrennt, optional)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Deutsch</label>
+                <select value={germanLevel} onChange={e => setGermanLevel(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  {LANGUAGE_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Englisch</label>
+                <select value={englishLevel} onChange={e => setEnglishLevel(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  {LANGUAGE_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Weitere Sprachen (optional)</label>
+                {otherLanguages.map((lang, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <input value={lang.name} onChange={e => {
+                      const next = [...otherLanguages]
+                      next[idx].name = e.target.value
+                      setOtherLanguages(next)
+                    }} placeholder="Sprache" className="flex-1 p-3 border border-slate-200 rounded-xl" />
+                    <select value={lang.level} onChange={e => {
+                      const next = [...otherLanguages]
+                      next[idx].level = e.target.value
+                      setOtherLanguages(next)
+                    }} className="w-40 p-3 border border-slate-200 rounded-xl">
+                      {LANGUAGE_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                    </select>
+                    <button type="button" onClick={() => setOtherLanguages(otherLanguages.filter((_, i) => i !== idx))} className="text-red-500 px-2">×</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setOtherLanguages([...otherLanguages, { name: '', level: 'A1' }])} className="text-sm text-blue-600 mt-1">+ Sprache hinzufügen</button>
+              </div>
+
+              <label className="block text-sm font-medium text-slate-700 mb-1">Skills (kommagetrennt, optional)</label>
                 <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="React, TypeScript, Sales..." />
               </div>
               <div>
