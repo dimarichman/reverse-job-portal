@@ -1270,16 +1270,16 @@ export default function Home() {
               )}
               {currentStep === 'title' && (
                 <>
-                  <h2 className="text-xl font-semibold mb-2">Welchen Job suchst du?</h2>
-                  <p className="text-sm text-slate-500 mb-6">z.B. Sales Director, Frontend Engineer...</p>
-                  <select value={JOBS.includes(title) ? title : ''} onChange={e => setTitle(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Auswählen...</option>
-                    {JOBS.map(j => <option key={j} value={j}>{j}</option>)}
-                    <option value="custom">Anderer Job...</option>
-                  </select>
-                  {(!JOBS.includes(title) || title === 'custom') && (
-                    <input value={title === 'custom' ? '' : title} onChange={e => setTitle(e.target.value)} placeholder="Job eingeben" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-3" />
-                  )}
+                  <h2 className="text-xl font-semibold mb-2">Welche Jobs suchst du?</h2>
+                  <p className="text-sm text-slate-500 mb-6">Mehrere möglich, kommagetrennt.</p>
+                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. Sales Director, Account Executive" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {JOBS.slice(0, 10).map(j => (
+                      <button key={j} type="button" onClick={() => setTitle(prev => prev ? `${prev}, ${j}` : j)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">
+                        + {j}
+                      </button>
+                    ))}
+                  </div>
                 </>
               )}
               {currentStep === 'location' && (
@@ -1434,15 +1434,15 @@ export default function Home() {
                 <input value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Gesuchter Job</label>
-                <select value={JOBS.includes(title) ? title : 'custom'} onChange={e => setTitle(e.target.value === 'custom' ? '' : e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">Auswählen...</option>
-                  {JOBS.map(j => <option key={j} value={j}>{j}</option>)}
-                  <option value="custom">Anderer Job...</option>
-                </select>
-                {(!JOBS.includes(title) || title === '') && (
-                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Job eingeben" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-2" />
-                )}
+                <label className="block text-sm font-medium text-slate-700 mb-1">Gesuchte Jobs (kommagetrennt)</label>
+                <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="z.B. Sales Director, Account Executive, Country Manager" />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {JOBS.slice(0, 10).map(j => (
+                    <button key={j} type="button" onClick={() => setTitle(prev => prev ? `${prev}, ${j}` : j)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">
+                      + {j}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Ort</label>
