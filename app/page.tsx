@@ -498,7 +498,8 @@ export default function Home() {
       setCandidatePhone(data.phone || '')
       setCandidateLinkedin(data.linkedin || '')
       setIsActive(data.is_active !== false)
-
+setNewsletter(data.newsletter !== false)
+setEmailNotifications(data.email_notifications !== false)
       const langs = data.languages || {}
       setGermanLevel(langs.german || 'keine')
       setEnglishLevel(langs.english || 'keine')
@@ -609,6 +610,7 @@ export default function Home() {
     const payload = {
       user_id: targetUserId,
       full_name: fullName,
+      email: user.email || null,
       title: title || null,
       location: location || null,
       experience_years: experience ? parseInt(experience) : null,
@@ -634,6 +636,8 @@ export default function Home() {
       },
 
       is_active: isActive,
+      newsletter: newsletter,
+email_notifications: emailNotifications,
       last_candidate_update: new Date().toISOString(),
     }
     try {
