@@ -23,6 +23,32 @@ const LANGUAGE_LEVELS = [
   { value: 'native', label: 'Muttersprache' },
 ]
 
+const LOCATIONS = [
+  'Remote', 'Hybrid',
+  'Berlin', 'Hamburg', 'München', 'Frankfurt', 'Köln', 'Düsseldorf', 'Stuttgart', 'Wien', 'Zürich',
+  'London', 'Paris', 'Amsterdam', 'Madrid', 'Barcelona', 'Milan', 'Dublin',
+  'New York', 'San Francisco', 'Los Angeles', 'Chicago', 'Austin', 'Boston', 'Seattle',
+  'Singapore', 'Hong Kong', 'Dubai', 'Sydney', 'Toronto', 'Vancouver',
+]
+
+const JOBS = [
+  'Account Executive', 'Account Manager', 'Sales Director', 'Head of Sales', 'VP Sales',
+  'Country Manager', 'Commercial Director', 'Business Development Manager',
+  'Key Account Manager', 'Enterprise Account Executive', 'Sales Manager',
+  'Marketing Manager', 'Head of Marketing', 'Product Manager', 'Product Owner',
+  'Software Engineer', 'Frontend Developer', 'Backend Developer', 'Full Stack Developer',
+  'Data Scientist', 'Data Analyst', 'Customer Success Manager', 'Operations Manager',
+  'HR Manager', 'Recruiter', 'Finance Manager', 'Controller',
+]
+
+const INDUSTRIES = [
+  'SaaS', 'Software', 'E-Commerce', 'FinTech', 'HealthTech', 'EdTech',
+  'Healthcare', 'Finance', 'Banking', 'Insurance', 'Manufacturing',
+  'Automotive', 'Retail', 'Hospitality', 'Food & Beverage', 'Logistics',
+  'Consulting', 'Media', 'Telecommunications', 'Energy', 'Real Estate',
+  'Gaming', 'Cybersecurity', 'AI / Machine Learning',
+]
+
 const PROCESS_OPTIONS = [
   { value: 'open', label: 'Offen' },
   { value: 'in_process', label: 'Im Prozess' },
@@ -993,12 +1019,21 @@ export default function Home() {
           <>
             <div className="mb-6 sm:mb-8 bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 shadow-sm">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                <input placeholder="Job / Titel" value={filterJob} onChange={e => setFilterJob(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                <input placeholder="Branche" value={filterIndustry} onChange={e => setFilterIndustry(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                <select value={filterJob} onChange={e => setFilterJob(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Job / Titel</option>
+                  {JOBS.map(j => <option key={j} value={j}>{j}</option>)}
+                </select>
+                <select value={filterIndustry} onChange={e => setFilterIndustry(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Branche</option>
+                  {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                </select>
                 <input placeholder="Skill" value={filterSkill} onChange={e => setFilterSkill(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                 <input placeholder="Min. Erfahrung (Jahre)" value={filterExp} onChange={e => setFilterExp(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                 <input placeholder="Max. Gehalt (k€)" value={filterSalary} onChange={e => setFilterSalary(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                <input placeholder="Ort" value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Ort</option>
+                  {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
               </div>
               {isAdmin && (
                 <div className="mt-4 flex items-center gap-2">
@@ -1237,14 +1272,28 @@ export default function Home() {
                 <>
                   <h2 className="text-xl font-semibold mb-2">Welchen Job suchst du?</h2>
                   <p className="text-sm text-slate-500 mb-6">z.B. Sales Director, Frontend Engineer...</p>
-                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Gesuchter Job" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                  <select value={JOBS.includes(title) ? title : ''} onChange={e => setTitle(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Auswählen...</option>
+                    {JOBS.map(j => <option key={j} value={j}>{j}</option>)}
+                    <option value="custom">Anderer Job...</option>
+                  </select>
+                  {(!JOBS.includes(title) || title === 'custom') && (
+                    <input value={title === 'custom' ? '' : title} onChange={e => setTitle(e.target.value)} placeholder="Job eingeben" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-3" />
+                  )}
                 </>
               )}
               {currentStep === 'location' && (
                 <>
                   <h2 className="text-xl font-semibold mb-2">Wo kannst du arbeiten?</h2>
                   <p className="text-sm text-slate-500 mb-6">Stadt, Remote, Hybrid...</p>
-                  <input value={location} onChange={e => setLocation(e.target.value)} placeholder="z.B. Hamburg / Remote" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" />
+                  <select value={LOCATIONS.includes(location) ? location : ''} onChange={e => setLocation(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Auswählen...</option>
+                    {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                    <option value="custom">Anderer Ort...</option>
+                  </select>
+                  {(!LOCATIONS.includes(location) || location === 'custom') && (
+                    <input value={location === 'custom' ? '' : location} onChange={e => setLocation(e.target.value)} placeholder="Ort eingeben" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-3" />
+                  )}
                 </>
               )}
               {currentStep === 'experience' && (
@@ -1386,11 +1435,25 @@ export default function Home() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Gesuchter Job</label>
-                <input value={title} onChange={e => setTitle(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="z.B. Senior Frontend Entwickler" />
+                <select value={JOBS.includes(title) ? title : 'custom'} onChange={e => setTitle(e.target.value === 'custom' ? '' : e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Auswählen...</option>
+                  {JOBS.map(j => <option key={j} value={j}>{j}</option>)}
+                  <option value="custom">Anderer Job...</option>
+                </select>
+                {(!JOBS.includes(title) || title === '') && (
+                  <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Job eingeben" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-2" />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Ort</label>
-                <input value={location} onChange={e => setLocation(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Hamburg, Remote..." />
+                <select value={LOCATIONS.includes(location) ? location : 'custom'} onChange={e => setLocation(e.target.value === 'custom' ? '' : e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                  <option value="">Auswählen...</option>
+                  {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                  <option value="custom">Anderer Ort...</option>
+                </select>
+                {(!LOCATIONS.includes(location) || location === '') && (
+                  <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Ort eingeben" className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 mt-2" />
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Jahre Berufserfahrung</label>
@@ -1474,8 +1537,15 @@ export default function Home() {
                 <input value={skills} onChange={e => setSkills(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="React, TypeScript, Sales..." />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Branchen (kommagetrennt, optional)</label>
-                <input value={industries} onChange={e => setIndustries(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="IT, SaaS, Hospitality..." />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Branchen (optional)</label>
+                <input value={industries} onChange={e => setIndustries(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="z.B. SaaS, FinTech, Healthcare..." />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {INDUSTRIES.slice(0, 8).map(i => (
+                    <button key={i} type="button" onClick={() => setIndustries(prev => prev ? `${prev}, ${i}` : i)} className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-full">
+                      + {i}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Telefonnummer</label>
