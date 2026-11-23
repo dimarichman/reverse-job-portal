@@ -87,6 +87,7 @@ export default function Home() {
   const [onboardingStep, setOnboardingStep] = useState(0)
   const [isActive, setIsActive] = useState(true)
   const [showInactive, setShowInactive] = useState(false)
+  const [adminEditing, setAdminEditing] = useState<any>(null)
 
   const [filterExp, setFilterExp] = useState('')
   const [filterSalary, setFilterSalary] = useState('')
@@ -364,6 +365,36 @@ export default function Home() {
     await loadAdminRecruiters()
   }
 
+
+  async function startAdminEdit(candidate: any) {
+    setAdminEditing(candidate)
+    setFullName(candidate.full_name || '')
+    setTitle(candidate.title || '')
+    setLocation(candidate.location || '')
+    setExperience(candidate.experience_years?.toString() || '')
+    setAvailability(candidate.availability || 'sofort')
+    setAvailableFrom(candidate.available_from || '')
+    setSalaryBase(candidate.salary_base_k?.toString() || '')
+    setSalaryOte(candidate.salary_ote_k?.toString() || candidate.salary_desired_k?.toString() || '')
+    setNegotiable(candidate.salary_negotiable !== false)
+    setCurrentCompany(candidate.current_company || '')
+    setEmployed(!!candidate.currently_employed)
+    setBio(candidate.bio || '')
+    setSkills((candidate.skills || []).join(', '))
+    setIndustries((candidate.industries || []).join(', '))
+    setPhotoUrl(candidate.photo_url || '')
+    setCvUrl(candidate.cv_url || '')
+    setCandidatePhone(candidate.phone || '')
+    setCandidateLinkedin(candidate.linkedin || '')
+    setIsActive(candidate.is_active !== false)
+    const langs = candidate.languages || {}
+    setGermanLevel(langs.german || 'keine')
+    setEnglishLevel(langs.english || 'keine')
+    setOtherLanguages(langs.others || [])
+    setView('profile')
+    setNeedsProfile(false)
+  }
+
   async function toggleCertified(candidateId: string, current: boolean) {
     const { error } = await supabase.from('candidates').update({ is_certified: !current }).eq('id', candidateId)
     if (error) {
@@ -560,9 +591,11 @@ export default function Home() {
     if (!user) return
     setSaving(true)
     setMsg('')
-    const isNew = !profile
+    const targetId = adminEditing ? adminEditing.id : profile?.id
+    const targetUserId = adminEditing ? adminEditing.user_id : user.id
+    const isNew = !targetId
     const payload = {
-      user_id: user.id,
+      user_id: targetUserId,
       full_name: fullName,
       title: title || null,
       location: location || null,
@@ -592,8 +625,17 @@ export default function Home() {
       last_candidate_update: new Date().toISOString(),
     }
     try {
-      if (profile) {
-        await supabase.from('candidates').update(payload).eq('id', profile.id)
+      if (targetId) {
+        await supabase.from('candidates').update(payload).eq('id', targetId)
+        if (adminEditing) {
+          setMsg('Profil als Admin gespeichert!')
+          setAdminEditing(null)
+          await loadCandidates()
+          setView('admin')
+        } else {
+          setMsg('Profil gespeichert!')
+          setView('overview')
+        }
       } else {
         const { data } = await supabase.from('candidates').insert(payload).select().single()
         setProfile(data)
@@ -601,11 +643,11 @@ export default function Home() {
           'Neues Kandidaten-Profil',
           `${fullName || user.email} hat ein Profil angelegt.`
         )
+        setNeedsProfile(false)
+        setOnboardingStep(0)
+        setMsg('Profil gespeichert!')
+        setView('overview')
       }
-      setNeedsProfile(false)
-      setOnboardingStep(0)
-      setMsg('Profil gespeichert!')
-      setView('overview')
     } catch (e: any) {
       setMsg('Fehler: ' + e.message)
     } finally {
@@ -887,12 +929,20 @@ export default function Home() {
                       <p className="text-sm font-medium truncate">{c.full_name || 'Unbekannt'} {c.is_certified && <span className="text-emerald-600">✓</span>}</p>
                       <p className="text-xs text-slate-500 truncate">{c.title || 'Kein Titel'}</p>
                     </div>
-                    <button
-                      onClick={() => toggleCertified(c.id, !!c.is_certified)}
-                      className={`text-xs px-3 py-1 rounded-lg font-medium flex-shrink-0 ${c.is_certified ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}
-                    >
-                      {c.is_certified ? 'Zertifiziert' : 'Zertifizieren'}
-                    </button>
+                    <div className="flex gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={() => startAdminEdit(c)}
+                        className="text-xs px-3 py-1 rounded-lg font-medium bg-blue-100 text-blue-800"
+                      >
+                        Bearbeiten
+                      </button>
+                      <button
+                        onClick={() => toggleCertified(c.id, !!c.is_certified)}
+                        className={`text-xs px-3 py-1 rounded-lg font-medium ${c.is_certified ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'}`}
+                      >
+                        {c.is_certified ? 'Zertifiziert' : 'Zertifizieren'}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1386,7 +1436,7 @@ export default function Home() {
         {view === 'profile' && !isRecruiter && !needsProfile && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-8 max-w-2xl">
             <div className="flex justify-between items-start mb-5">
-              <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">Mein Profil</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{adminEditing ? `Profil bearbeiten: ${adminEditing.full_name || 'Unbekannt'}` : 'Mein Profil'}</h2>
               <button onClick={toggleActive} className={`text-sm px-4 py-2 rounded-xl font-medium ${isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
                 {isActive ? 'Aktiv (auf Suche)' : 'Inaktiv'}
               </button>
