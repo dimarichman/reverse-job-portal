@@ -13,8 +13,8 @@ export default function Datenschutz() {
             <p>
               Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:<br /><br />
               Dimitry Rachmann<br />
-              [Straße und Hausnummer]<br />
-              [PLZ] Hamburg<br />
+              Julius-Brecht-Straße 21a<br />
+              22609 Hamburg<br />
               E-Mail: dimarachmann@aol.com
             </p>
           </section>
@@ -88,7 +88,7 @@ export default function Datenschutz() {
           </section>
 
           <p className="text-sm text-slate-500 mt-10">
-            Stand: November 2026. Diese Datenschutzerklärung entspricht den Anforderungen der DSGVO. Bitte ergänze deine vollständige Adresse im Abschnitt „Verantwortlicher“.
+            Stand: November 2026. Diese Datenschutzerklärung entspricht den Anforderungen der DSGVO.
           </p>
         </div>
       </div>
