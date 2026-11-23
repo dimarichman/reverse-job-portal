@@ -498,8 +498,8 @@ export default function Home() {
       setCandidatePhone(data.phone || '')
       setCandidateLinkedin(data.linkedin || '')
       setIsActive(data.is_active !== false)
-setNewsletter(data.newsletter !== false)
-setEmailNotifications(data.email_notifications !== false)
+      setNewsletter(data.newsletter !== false)
+      setEmailNotifications(data.email_notifications !== false)
       const langs = data.languages || {}
       setGermanLevel(langs.german || 'keine')
       setEnglishLevel(langs.english || 'keine')
@@ -610,7 +610,7 @@ setEmailNotifications(data.email_notifications !== false)
     const payload = {
       user_id: targetUserId,
       full_name: fullName,
-      email: user.email || null,
+      email: adminEditing ? (adminEditing.email || null) : (user.email || null),
       title: title || null,
       location: location || null,
       experience_years: experience ? parseInt(experience) : null,
@@ -637,7 +637,7 @@ setEmailNotifications(data.email_notifications !== false)
 
       is_active: isActive,
       newsletter: newsletter,
-email_notifications: emailNotifications,
+      email_notifications: emailNotifications,
       last_candidate_update: new Date().toISOString(),
     }
     try {
@@ -1132,9 +1132,39 @@ email_notifications: emailNotifications,
                   if (!subject) return
                   const body = window.prompt('Inhalt (HTML erlaubt):')
                   if (!body) return
-                  const { data: users } = await supabase.from('candidates').select('user_id, full_name').eq('newsletter', true)
-                  alert(`Newsletter wird an ${users?.length || 0} Abonnenten gesendet (Funktion muss eingerichtet sein).`)
-                  // Actual sending happens via Edge Function once Resend is set up
+
+                  const { data: users, error } = await supabase
+                    .from('candidates')
+                    .select('full_name, email')
+                    .eq('newsletter', true)
+
+                  if (error) {
+                    alert('Fehler: ' + error.message)
+                    return
+                  }
+
+                  const withEmail = (users || []).filter(u => u.email)
+                  if (withEmail.length === 0) {
+                    alert('Keine Abonnenten mit E-Mail. Profil einmal speichern, damit die E-Mail im Profil landet.')
+                    return
+                  }
+
+                  if (!confirm(`Newsletter an ${withEmail.length} Abonnenten senden?`)) return
+
+                  let sent = 0
+                  let failed = 0
+                  for (const u of withEmail) {
+                    try {
+                      const { error: sendErr } = await supabase.functions.invoke('send-email', {
+                        body: { to: u.email, subject, html: body }
+                      })
+                      if (sendErr) failed++
+                      else sent++
+                    } catch {
+                      failed++
+                    }
+                  }
+                  alert(`Gesendet: ${sent}. Fehlgeschlagen: ${failed}.`)
                 }}
                 className="bg-blue-600 text-white text-sm px-4 py-2 rounded-xl"
               >
@@ -1795,3 +1825,4 @@ email_notifications: emailNotifications,
     </div>
   )
 }
+
