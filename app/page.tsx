@@ -50,11 +50,15 @@ const INDUSTRIES = [
 ]
 
 // Approximate OTE medians in k€ (2026, blended from public sources)
+// Hierarchy: Account Executive < Sales Manager < Sales Director < Head of Sales < VP Sales
 const SALARY_BENCHMARKS: Record<string, Record<string, number>> = {
-  'Sales Director': { 'Hamburg': 140, 'Berlin': 145, 'München': 150, 'London': 160, 'Amsterdam': 140, 'Remote': 135, 'New York': 180, 'San Francisco': 190 },
-  'Country Manager': { 'Hamburg': 150, 'Berlin': 155, 'München': 160, 'London': 170, 'Amsterdam': 150, 'Remote': 145, 'New York': 190 },
   'Account Executive': { 'Hamburg': 90, 'Berlin': 95, 'München': 100, 'London': 110, 'Amsterdam': 95, 'Remote': 85, 'New York': 120 },
-  'Head of Sales': { 'Hamburg': 160, 'Berlin': 165, 'München': 170, 'London': 180, 'Amsterdam': 160, 'Remote': 155, 'New York': 200 },
+  'Sales Manager': { 'Hamburg': 110, 'Berlin': 115, 'München': 120, 'London': 130, 'Amsterdam': 115, 'Remote': 105, 'New York': 140 },
+  'Sales Director': { 'Hamburg': 140, 'Berlin': 145, 'München': 150, 'London': 160, 'Amsterdam': 140, 'Remote': 135, 'New York': 180, 'San Francisco': 190 },
+  'Head of Sales': { 'Hamburg': 170, 'Berlin': 175, 'München': 180, 'London': 190, 'Amsterdam': 170, 'Remote': 165, 'New York': 210 },
+  'VP Sales': { 'Hamburg': 190, 'Berlin': 195, 'München': 200, 'London': 210, 'Amsterdam': 190, 'Remote': 185, 'New York': 230 },
+  'Country Manager': { 'Hamburg': 160, 'Berlin': 165, 'München': 170, 'London': 180, 'Amsterdam': 160, 'Remote': 155, 'New York': 200 },
+  'Commercial Director': { 'Hamburg': 155, 'Berlin': 160, 'München': 165, 'London': 175, 'Amsterdam': 155, 'Remote': 150, 'New York': 195 },
   'Product Manager': { 'Hamburg': 100, 'Berlin': 105, 'München': 110, 'London': 120, 'Amsterdam': 105, 'Remote': 95, 'New York': 140, 'San Francisco': 150 },
   'Software Engineer': { 'Hamburg': 85, 'Berlin': 90, 'München': 95, 'London': 105, 'Amsterdam': 90, 'Remote': 80, 'New York': 130, 'San Francisco': 150 },
   'Marketing Manager': { 'Hamburg': 80, 'Berlin': 85, 'München': 90, 'London': 100, 'Amsterdam': 85, 'Remote': 75, 'New York': 110 },
