@@ -959,7 +959,7 @@ export default function Home() {
                 {candidates.map(c => (
                   <div key={c.id} className="px-3 py-2 flex items-center justify-between gap-3 border-b border-slate-100 last:border-0 hover:bg-slate-50">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{c.full_name || 'Unbekannt'} {c.is_certified && <span className="text-emerald-600">✓</span>}</p>
+                      <p className="text-sm font-medium truncate">{c.full_name || 'Unbekannt'} {c.is_certified && <span className="text-emerald-600">✓</span>} <span className="text-xs text-slate-400 font-normal">({getCompleteness(c)}%)</span></p>
                       <p className="text-xs text-slate-500 truncate">{c.title || 'Kein Titel'}</p>
                     </div>
                     <div className="flex gap-1.5 flex-shrink-0">
@@ -1165,15 +1165,24 @@ export default function Home() {
                             {c.is_certified && <span className="text-emerald-600 text-sm" title="Zertifiziert">✓</span>}
                             {c.is_active === false && <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">Inaktiv</span>}
                           </h3>
-                          <p className="text-slate-700 font-medium mt-0.5">{c.title || 'Kein Titel'}</p>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {(c.title || '').split(',').map((t: string) => t.trim()).filter(Boolean).slice(0, 4).map((t: string) => (
+                              <span key={t} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full font-medium">{t}</span>
+                            ))}
+                            {!(c.title || '').trim() && <span className="text-slate-400 text-sm">Kein Titel</span>}
+                          </div>
                         </div>
                       </div>
 
                       <div className="mt-5 space-y-3">
                         {c.location && (
                           <div className="flex">
-                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Ort</span>
-                            <span className="text-sm text-slate-800">{isHidden ? '••••' : c.location}</span>
+                            <span className="text-xs uppercase tracking-wide text-slate-400 w-28 flex-shrink-0 pt-0.5">Orte</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {isHidden ? <span className="text-sm">••••</span> : (c.location || '').split(',').map((l: string) => l.trim()).filter(Boolean).slice(0, 5).map((l: string) => (
+                                <span key={l} className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-full">{l}</span>
+                              ))}
+                            </div>
                           </div>
                         )}
                         {c.experience_years != null && (
