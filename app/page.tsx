@@ -716,6 +716,25 @@ export default function Home() {
     setShowAuth(false)
   }
 
+
+  function getCompleteness(c: any): number {
+    let score = 0
+    if (c.full_name) score += 10
+    if (c.title) score += 15
+    if (c.location) score += 10
+    if (c.experience_years != null) score += 10
+    if (c.availability) score += 10
+    if (c.photo_url) score += 10
+    if (c.cv_url) score += 10
+    if (c.bio) score += 5
+    if (c.skills?.length > 0) score += 5
+    if (c.industries?.length > 0) score += 5
+    if (c.salary_ote_k || c.salary_desired_k) score += 5
+    if (c.languages?.german && c.languages.german !== 'keine') score += 5
+    if (c.languages?.english && c.languages.english !== 'keine') score += 5
+    return Math.min(score, 100)
+  }
+
   function calculateScore(c: any): number {
     // Completeness (0-100)
     let completeness = 0
@@ -771,10 +790,24 @@ export default function Home() {
     if (c.is_active === false && !(isAdmin && showInactive)) return false
     if (filterExp && (c.experience_years || 0) < parseInt(filterExp)) return false
     if (filterSalary && ((c.salary_ote_k || c.salary_desired_k) || 999) > parseInt(filterSalary)) return false
-    if (filterLocation && !c.location?.toLowerCase().includes(filterLocation.toLowerCase())) return false
-    if (filterSkill && !c.skills?.some((s: string) => s.toLowerCase().includes(filterSkill.toLowerCase()))) return false
-    if (filterJob && !c.title?.toLowerCase().includes(filterJob.toLowerCase())) return false
-    if (filterIndustry && !c.industries?.some((i: string) => i.toLowerCase().includes(filterIndustry.toLowerCase()))) return false
+    
+    // Flexible multi-value matching
+    if (filterLocation) {
+      const loc = (c.location || '').toLowerCase()
+      if (!loc.includes(filterLocation.toLowerCase())) return false
+    }
+    if (filterJob) {
+      const jobs = (c.title || '').toLowerCase()
+      if (!jobs.includes(filterJob.toLowerCase())) return false
+    }
+    if (filterSkill) {
+      const skills = (c.skills || []).join(' ').toLowerCase()
+      if (!skills.includes(filterSkill.toLowerCase())) return false
+    }
+    if (filterIndustry) {
+      const inds = (c.industries || []).join(' ').toLowerCase()
+      if (!inds.includes(filterIndustry.toLowerCase())) return false
+    }
     return true
   }).sort((a, b) => calculateScore(b) - calculateScore(a))
 
@@ -1436,7 +1469,20 @@ export default function Home() {
         {view === 'profile' && !isRecruiter && !needsProfile && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 sm:p-8 max-w-2xl">
             <div className="flex justify-between items-start mb-5">
-              <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{adminEditing ? `Profil bearbeiten: ${adminEditing.full_name || 'Unbekannt'}` : 'Mein Profil'}</h2>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{adminEditing ? `Profil bearbeiten: ${adminEditing.full_name || 'Unbekannt'}` : 'Mein Profil'}</h2>
+                {!adminEditing && profile && (
+                  <div className="mt-2">
+                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                      <span>Profil-Vollständigkeit</span>
+                      <span>{getCompleteness(profile)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-200 rounded-full">
+                      <div className="h-full bg-blue-600 rounded-full" style={{ width: `${getCompleteness(profile)}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
               <button onClick={toggleActive} className={`text-sm px-4 py-2 rounded-xl font-medium ${isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
                 {isActive ? 'Aktiv (auf Suche)' : 'Inaktiv'}
               </button>
