@@ -872,6 +872,38 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="max-w-4xl mx-auto px-4 sm:px-6 pb-16">
+          <h3 className="text-center text-2xl font-semibold text-slate-900 mb-8">So funktioniert's</h3>
+          <div className="grid md:grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">1</div>
+              <p className="font-medium">Profil anlegen</p>
+              <p className="text-sm text-slate-600 mt-1">In 2 Minuten. Jobs, Orte, Verfügbarkeit – fertig.</p>
+            </div>
+            <div>
+              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">2</div>
+              <p className="font-medium">Recruiter finden dich</p>
+              <p className="text-sm text-slate-600 mt-1">Du wirst aktiv gesucht. Keine Bewerbungen mehr schreiben.</p>
+            </div>
+            <div>
+              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">3</div>
+              <p className="font-medium">Du entscheidest</p>
+              <p className="text-sm text-slate-600 mt-1">Anfragen kommen rein – du sagst Ja oder Nein.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16 text-center">
+          <div className="bg-blue-50 rounded-3xl p-8 sm:p-10">
+            <h3 className="text-2xl font-semibold text-slate-900">Bereit, gefunden zu werden?</h3>
+            <p className="mt-2 text-slate-600">Kostenlos. Kein Abo. Dein Profil bleibt unter deiner Kontrolle.</p>
+            <button onClick={() => { setShowAuth(true); setIsLogin(false); setRole('candidate') }} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-medium transition shadow-sm">
+              Jetzt kostenlos starten
+            </button>
+            <p className="mt-4 text-xs text-slate-500">Wer noch im Job ist, bleibt für normale Recruiter verdeckt.</p>
+          </div>
+        </section>
+
         <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-20">
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-100">
