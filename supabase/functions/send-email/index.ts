@@ -2,15 +2,36 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  })
+}
+
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: cors })
+  }
+
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 })
+    return json({ error: 'Method not allowed' }, 405)
+  }
+
+  if (!RESEND_API_KEY) {
+    return json({ error: 'RESEND_API_KEY fehlt' }, 500)
   }
 
   try {
     const { to, subject, html } = await req.json()
     if (!to || !subject || !html) {
-      return new Response(JSON.stringify({ error: 'Missing to, subject or html' }), { status: 400 })
+      return json({ error: 'Missing to, subject or html' }, 400)
     }
 
     const res = await fetch('https://api.resend.com/emails', {
@@ -28,11 +49,11 @@ serve(async (req) => {
     })
 
     const data = await res.json()
-    return new Response(JSON.stringify(data), {
-      headers: { 'Content-Type': 'application/json' },
-      status: res.ok ? 200 : 400,
-    })
+    if (!res.ok) {
+      return json({ error: data?.message || 'Resend hat abgelehnt', details: data }, 400)
+    }
+    return json(data)
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), { status: 500 })
+    return json({ error: String(err) }, 500)
   }
 })
