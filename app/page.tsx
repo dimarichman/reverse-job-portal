@@ -1151,7 +1151,7 @@ export default function Home() {
 
                   const only = window.prompt('Nur an diese eine Adresse testen? Nur name@domain.de, sonst nichts. Leer = alle ' + withEmail.length)
                   if (only === null) return
-                  const pick = (value) => {
+                  const pick = (value: string) => {
                     const match = String(value || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
                     return match ? match[0] : ''
                   }
