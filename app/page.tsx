@@ -1149,22 +1149,39 @@ export default function Home() {
                     return
                   }
 
-                  if (!confirm(`Newsletter an ${withEmail.length} Abonnenten senden?`)) return
+                  const only = window.prompt('Nur an diese eine Adresse testen? Leer lassen = alle ' + withEmail.length)
+                  if (only === null) return
+                  const targets = only.trim() ? [{ email: only.trim() }] : withEmail
+                  if (!confirm(`Newsletter an ${targets.length} Adresse(n) senden?`)) return
 
                   let sent = 0
                   let failed = 0
-                  for (const u of withEmail) {
+                  let firstError = ''
+                  for (const u of targets) {
                     try {
                       const { error: sendErr } = await supabase.functions.invoke('send-email', {
                         body: { to: u.email, subject, html: body }
                       })
-                      if (sendErr) failed++
-                      else sent++
-                    } catch {
+                      if (sendErr) {
+                        failed++
+                        if (!firstError) {
+                          let detail = sendErr.message || 'unbekannt'
+                          try {
+                            const ctx = sendErr.context
+                            if (ctx && typeof ctx.json === 'function') {
+                              const payload = await ctx.json()
+                              detail = payload?.message || payload?.error?.message || (typeof payload?.error === 'string' ? payload.error : '') || JSON.stringify(payload)
+                            }
+                          } catch {}
+                          firstError = detail
+                        }
+                      } else sent++
+                    } catch (e) {
                       failed++
+                      if (!firstError) firstError = String(e)
                     }
                   }
-                  alert(`Gesendet: ${sent}. Fehlgeschlagen: ${failed}.`)
+                  alert(`Gesendet: ${sent}. Fehlgeschlagen: ${failed}.${firstError ? '\n\nGrund: ' + firstError : ''}`)
                 }}
                 className="bg-blue-600 text-white text-sm px-4 py-2 rounded-xl"
               >
