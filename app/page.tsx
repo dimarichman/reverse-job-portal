@@ -1149,15 +1149,26 @@ export default function Home() {
                     return
                   }
 
-                  const only = window.prompt('Nur an diese eine Adresse testen? Leer lassen = alle ' + withEmail.length)
+                  const only = window.prompt('Nur an diese eine Adresse testen? Nur name@domain.de, sonst nichts. Leer = alle ' + withEmail.length)
                   if (only === null) return
-                  const targets = only.trim() ? [{ email: only.trim() }] : withEmail
-                  if (!confirm(`Newsletter an ${targets.length} Adresse(n) senden?`)) return
+                  const pick = (value) => {
+                    const match = String(value || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
+                    return match ? match[0] : ''
+                  }
+                  const targets = only.trim()
+                    ? [{ email: pick(only), raw: only.trim() }]
+                    : withEmail.map(u => ({ email: pick(u.email), raw: String(u.email || '') }))
+                  const valid = targets.filter(t => t.email)
+                  if (valid.length === 0) {
+                    alert('Keine gültige E-Mail erkannt: ' + (targets[0]?.raw || only))
+                    return
+                  }
+                  if (!confirm('Newsletter an ' + valid.map(t => t.email).join(', ') + ' senden?')) return
 
                   let sent = 0
                   let failed = 0
                   let firstError = ''
-                  for (const u of targets) {
+                  for (const u of valid) {
                     try {
                       const { error: sendErr } = await supabase.functions.invoke('send-email', {
                         body: { to: u.email, subject, html: body }
@@ -1173,12 +1184,12 @@ export default function Home() {
                               detail = payload?.message || payload?.error?.message || (typeof payload?.error === 'string' ? payload.error : '') || JSON.stringify(payload)
                             }
                           } catch {}
-                          firstError = detail
+                          firstError = detail + ' (an: ' + u.email + ')'
                         }
                       } else sent++
                     } catch (e) {
                       failed++
-                      if (!firstError) firstError = String(e)
+                      if (!firstError) firstError = String(e) + ' (an: ' + u.email + ')'
                     }
                   }
                   alert(`Gesendet: ${sent}. Fehlgeschlagen: ${failed}.${firstError ? '\n\nGrund: ' + firstError : ''}`)
